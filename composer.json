@@ -1,0 +1,38 @@
+{
+    "name": "giudicelli/distributed-architecture",
+    "type": "library",
+    "description": "PHP distributed architecture",
+    "keywords": [],
+    "homepage": "https://github.com/giudicelli/distributed-architecture",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Frédéric Giudicelli"
+        }
+    ],
+    "require": {
+        "php": ">=7.2.5",
+        "ext-pcntl": "*",
+        "ext-ssh2": "*",
+        "psr/log": "~1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9"
+    },
+    "conflict": {
+    },
+    "suggest": {
+    },
+    "autoload": {
+        "psr-4": { "giudicelli\\DistributedArchitecture\\": "src/" },
+        "exclude-from-classmap": [
+            "/tests/"
+        ]
+    },
+    "minimum-stability": "dev",
+    "extra": {
+        "branch-alias": {
+            "dev-master": "master-dev"
+        }
+    }
+}
