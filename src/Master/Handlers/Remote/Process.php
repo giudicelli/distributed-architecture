@@ -71,11 +71,13 @@ class Process extends AbstractProcess
             return [];
         }
 
+        $class = get_called_class();
+
         $children = [];
         $id = $idStart;
         $groupId = $groupIdStart;
         foreach ($config->getHosts() as $host) {
-            $children[] = new self($host, $id, $groupId, $groupConfig, $config, $logger);
+            $children[] = new $class($host, $id, $groupId, $groupConfig, $config, $logger);
             $id += $config->getInstancesCount();
             $groupId += $config->getInstancesCount();
         }
