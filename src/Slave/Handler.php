@@ -5,13 +5,29 @@ namespace giudicelli\DistributedArchitecture\Slave;
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config;
-use giudicelli\DistributedArchitecture\Master\Handlers\Remote\Process as ProcessRemote;
 use giudicelli\DistributedArchitecture\Master\Launcher;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
-use giudicelli\DistributedArchitecture\Master\ProcessInterface;
 
 class Handler
 {
+    const PARAM_PREFIX = 'gda_';
+    const PARAM_ID = self::PARAM_PREFIX.'id';
+    const PARAM_GROUP_ID = self::PARAM_PREFIX.'groupId';
+    const PARAM_GROUP_CONFIG = self::PARAM_PREFIX.'groupConfig';
+    const PARAM_GROUP_CONFIG_CLASS = self::PARAM_PREFIX.'groupConfigClass';
+
+    const PARAM_COMMAND = self::PARAM_PREFIX.'command';
+    const PARAM_SIGNAL = self::PARAM_PREFIX.'signal';
+    const PARAM_LAUNCHER_CLASS = self::PARAM_PREFIX.'launcherClass';
+    const PARAM_CONFIG = self::PARAM_PREFIX.'config';
+    const PARAM_CONFIG_CLASS = self::PARAM_PREFIX.'configClass';
+
+    const PARAM_COMMAND_KILL = 'kill';
+    const PARAM_COMMAND_LAUNCH = 'launch';
+
+    const PING_MESSAGE = 'Handler::ping';
+    const ENDED_MESSAGE = 'Handler::ended';
+
     protected $mustStop = false;
 
     protected $id = 0;
@@ -79,7 +95,7 @@ class Handler
         }
         $this->lastSentPing = $t;
 
-        echo ProcessInterface::PING_MESSAGE."\n";
+        echo self::PING_MESSAGE."\n";
         flush();
     }
 
@@ -88,7 +104,7 @@ class Handler
      */
     public function sendEnded(): void
     {
-        echo ProcessInterface::ENDED_MESSAGE."\n";
+        echo self::ENDED_MESSAGE."\n";
         flush();
     }
 
@@ -152,30 +168,30 @@ class Handler
         if (empty($this->params)) {
             throw new \InvalidArgumentException('params is not properly encoded');
         }
-        if (empty($this->params[ProcessInterface::PARAM_ID])) {
-            throw new \InvalidArgumentException('Expected '.ProcessInterface::PARAM_ID.' in params');
+        if (empty($this->params[self::PARAM_ID])) {
+            throw new \InvalidArgumentException('Expected '.self::PARAM_ID.' in params');
         }
-        $this->id = $this->params[ProcessInterface::PARAM_ID];
+        $this->id = $this->params[self::PARAM_ID];
 
-        if (empty($this->params[ProcessInterface::PARAM_GROUP_ID])) {
-            throw new \InvalidArgumentException('Expected '.ProcessInterface::PARAM_GROUP_ID.' in params');
+        if (empty($this->params[self::PARAM_GROUP_ID])) {
+            throw new \InvalidArgumentException('Expected '.self::PARAM_GROUP_ID.' in params');
         }
-        $this->groupId = $this->params[ProcessInterface::PARAM_GROUP_ID];
+        $this->groupId = $this->params[self::PARAM_GROUP_ID];
 
         $this->loadGroupConfigObject();
     }
 
     protected function loadGroupConfigObject(): void
     {
-        if (empty($this->params[ProcessInterface::PARAM_GROUP_CONFIG])) {
-            throw new \InvalidArgumentException('Expected '.ProcessInterface::PARAM_GROUP_CONFIG.' in params');
+        if (empty($this->params[self::PARAM_GROUP_CONFIG])) {
+            throw new \InvalidArgumentException('Expected '.self::PARAM_GROUP_CONFIG.' in params');
         }
 
-        if (empty($this->params[ProcessInterface::PARAM_GROUP_CONFIG_CLASS])) {
-            throw new \InvalidArgumentException('Expected '.ProcessInterface::PARAM_GROUP_CONFIG_CLASS.' in params');
+        if (empty($this->params[self::PARAM_GROUP_CONFIG_CLASS])) {
+            throw new \InvalidArgumentException('Expected '.self::PARAM_GROUP_CONFIG_CLASS.' in params');
         }
 
-        $class = $this->params[ProcessInterface::PARAM_GROUP_CONFIG_CLASS];
+        $class = $this->params[self::PARAM_GROUP_CONFIG_CLASS];
         $reflectionClass = new \ReflectionClass($class);
         if (!$reflectionClass->implementsInterface(GroupConfigInterface::class)
             || !$reflectionClass->isInstantiable()) {
@@ -183,46 +199,46 @@ class Handler
         }
 
         $this->groupConfig = new $class();
-        $this->groupConfig->fromArray($this->params[ProcessInterface::PARAM_GROUP_CONFIG]);
+        $this->groupConfig->fromArray($this->params[self::PARAM_GROUP_CONFIG]);
     }
 
     protected function isCommand(): bool
     {
-        return !empty($this->params[ProcessRemote::PARAM_COMMAND]);
+        return !empty($this->params[self::PARAM_COMMAND]);
     }
 
     protected function handleCommand(): void
     {
         if (!$this->isCommand()) {
-            throw new \InvalidArgumentException('Expected '.ProcessRemote::PARAM_COMMAND.' in params');
+            throw new \InvalidArgumentException('Expected '.self::PARAM_COMMAND.' in params');
         }
 
         $processConfig = $this->getCommandConfigObject();
-        switch ($this->params[ProcessRemote::PARAM_COMMAND]) {
-            case ProcessRemote::PARAM_COMMAND_KILL:
+        switch ($this->params[self::PARAM_COMMAND]) {
+            case self::PARAM_COMMAND_KILL:
                 $this->handleKill($processConfig);
 
             break;
-            case ProcessRemote::PARAM_COMMAND_LAUNCH:
+            case self::PARAM_COMMAND_LAUNCH:
                 $this->handleLaunch($processConfig);
 
             break;
             default:
-                throw new \InvalidArgumentException('Unknown value "'.$this->params[ProcessRemote::PARAM_COMMAND].'" from '.ProcessRemote::PARAM_COMMAND.' in params');
+                throw new \InvalidArgumentException('Unknown value "'.$this->params[self::PARAM_COMMAND].'" from '.self::PARAM_COMMAND.' in params');
         }
     }
 
     protected function getCommandConfigObject(): ProcessConfigInterface
     {
-        if (empty($this->params[ProcessRemote::PARAM_CONFIG])) {
-            throw new \InvalidArgumentException('Expected '.ProcessRemote::PARAM_CONFIG.' in params');
+        if (empty($this->params[self::PARAM_CONFIG])) {
+            throw new \InvalidArgumentException('Expected '.self::PARAM_CONFIG.' in params');
         }
 
-        if (empty($this->params[ProcessRemote::PARAM_CONFIG_CLASS])) {
-            throw new \InvalidArgumentException('Expected '.ProcessRemote::PARAM_CONFIG_CLASS.' in params');
+        if (empty($this->params[self::PARAM_CONFIG_CLASS])) {
+            throw new \InvalidArgumentException('Expected '.self::PARAM_CONFIG_CLASS.' in params');
         }
 
-        $class = $this->params[ProcessRemote::PARAM_CONFIG_CLASS];
+        $class = $this->params[self::PARAM_CONFIG_CLASS];
 
         $reflectionClass = new \ReflectionClass($class);
         if (!$reflectionClass->implementsInterface(ProcessConfigInterface::class)
@@ -231,18 +247,18 @@ class Handler
         }
 
         $config = new $class();
-        $config->fromArray($this->params[ProcessRemote::PARAM_CONFIG]);
+        $config->fromArray($this->params[self::PARAM_CONFIG]);
 
         return $config;
     }
 
     protected function getCommandLauncherObject(): Launcher
     {
-        if (empty($this->params[ProcessRemote::PARAM_LAUNCHER_CLASS])) {
-            throw new \InvalidArgumentException('Expected '.ProcessRemote::PARAM_LAUNCHER_CLASS.' in params');
+        if (empty($this->params[self::PARAM_LAUNCHER_CLASS])) {
+            throw new \InvalidArgumentException('Expected '.self::PARAM_LAUNCHER_CLASS.' in params');
         }
 
-        $class = $this->params[ProcessRemote::PARAM_LAUNCHER_CLASS];
+        $class = $this->params[self::PARAM_LAUNCHER_CLASS];
 
         if (Launcher::class !== $class) {
             $reflectionClass = new \ReflectionClass($class);
@@ -282,12 +298,12 @@ class Handler
             return;
         }
 
-        if (empty($this->params[ProcessRemote::PARAM_SIGNAL])) {
+        if (empty($this->params[self::PARAM_SIGNAL])) {
             posix_kill($pid, SIGTERM);
-        } elseif (SIGKILL === $this->params[ProcessRemote::PARAM_SIGNAL]) {
+        } elseif (SIGKILL === $this->params[self::PARAM_SIGNAL]) {
             ProcessHelper::kill($pid, SIGKILL);
         } else {
-            posix_kill($pid, $this->params[ProcessRemote::PARAM_SIGNAL]);
+            posix_kill($pid, $this->params[self::PARAM_SIGNAL]);
         }
     }
 }

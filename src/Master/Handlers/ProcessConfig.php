@@ -27,6 +27,9 @@ class ProcessConfig extends AbstractConfig implements ProcessConfigInterface
 
     public function setInstancesCount(int $instancesCount): ProcessConfigInterface
     {
+        if (!$instancesCount) {
+            throw new \InvalidArgumentException('You cannot set an empty instances count');
+        }
         $this->instancesCount = $instancesCount;
 
         return $this;

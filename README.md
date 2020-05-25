@@ -1,7 +1,7 @@
 
 # distributed-architecture
 
-PHP Distributed Architecture is a library meant to be helping managing a distributed architecture. It's sole purpose is to start process on the local server and on remote servers.
+PHP Distributed Architecture is a library meant to be helping managing a distributed architecture. It's sole purpose is to start processes on the local or remotes servers.
 
 ## Installation
 

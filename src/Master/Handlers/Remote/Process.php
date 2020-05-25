@@ -8,6 +8,7 @@ use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcess;
 use giudicelli\DistributedArchitecture\Master\Handlers\GroupConfig;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config as ConfigLocal;
 use giudicelli\DistributedArchitecture\Master\Launcher;
+use giudicelli\DistributedArchitecture\Slave\Handler;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -19,15 +20,6 @@ use Psr\Log\LoggerInterface;
  */
 class Process extends AbstractProcess
 {
-    const PARAM_COMMAND = self::PARAM_PREFIX.'command';
-    const PARAM_SIGNAL = self::PARAM_PREFIX.'signal';
-    const PARAM_LAUNCHER_CLASS = self::PARAM_PREFIX.'launcherClass';
-    const PARAM_CONFIG = self::PARAM_PREFIX.'config';
-    const PARAM_CONFIG_CLASS = self::PARAM_PREFIX.'configClass';
-
-    const PARAM_COMMAND_KILL = 'kill';
-    const PARAM_COMMAND_LAUNCH = 'launch';
-
     protected $privateKey = '';
 
     protected $username = '';
@@ -102,7 +94,7 @@ class Process extends AbstractProcess
 
     public function start(): bool
     {
-        $cmd = $this->buildShellCommand(self::PARAM_COMMAND_LAUNCH);
+        $cmd = $this->buildShellCommand(Handler::PARAM_COMMAND_LAUNCH);
 
         $info = $this->remoteExec($cmd);
         if (!$info) {
@@ -200,10 +192,10 @@ class Process extends AbstractProcess
         }
 
         $params = $this->buildParams();
-        $params[self::PARAM_COMMAND] = $command;
-        $params[self::PARAM_CONFIG] = $this->config;
-        $params[self::PARAM_CONFIG_CLASS] = $this->getRemoteConfigClass();
-        $params[self::PARAM_LAUNCHER_CLASS] = $this->getRemoteLauncherClass();
+        $params[Handler::PARAM_COMMAND] = $command;
+        $params[Handler::PARAM_CONFIG] = $this->config;
+        $params[Handler::PARAM_CONFIG_CLASS] = $this->getRemoteConfigClass();
+        $params[Handler::PARAM_LAUNCHER_CLASS] = $this->getRemoteLauncherClass();
 
         if ($extraParams) {
             $params = array_merge($params, $extraParams);
@@ -240,8 +232,8 @@ class Process extends AbstractProcess
      */
     protected function sendSignal(int $signal): void
     {
-        $cmd = $this->buildShellCommand(self::PARAM_COMMAND_KILL, [
-            self::PARAM_PREFIX.'signal' => $signal,
+        $cmd = $this->buildShellCommand(Handler::PARAM_COMMAND_KILL, [
+            Handler::PARAM_SIGNAL => $signal,
         ]);
 
         $info = $this->remoteExec($cmd);

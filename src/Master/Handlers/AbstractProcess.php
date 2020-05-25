@@ -3,6 +3,7 @@
 namespace giudicelli\DistributedArchitecture\Master\Handlers;
 
 use giudicelli\DistributedArchitecture\Master\ProcessInterface;
+use giudicelli\DistributedArchitecture\Slave\Handler;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -73,13 +74,13 @@ abstract class AbstractProcess implements ProcessInterface
                 $this->timeoutsCount = 0;
                 $this->lastSeen = time();
 
-                if (self::ENDED_MESSAGE === $line) {
+                if (Handler::ENDED_MESSAGE === $line) {
                     // The child procces is exiting
                     $this->stop();
 
                     return self::READ_EMPTY;
                 }
-                if (self::PING_MESSAGE === $line) {
+                if (Handler::PING_MESSAGE === $line) {
                     return self::READ_EMPTY;
                 }
 
@@ -168,10 +169,10 @@ abstract class AbstractProcess implements ProcessInterface
     protected function buildParams(): array
     {
         return [
-            self::PARAM_ID => $this->id,
-            self::PARAM_GROUP_ID => $this->groupId,
-            self::PARAM_GROUP_CONFIG => $this->groupConfig,
-            self::PARAM_GROUP_CONFIG_CLASS => get_class($this->groupConfig),
+            Handler::PARAM_ID => $this->id,
+            Handler::PARAM_GROUP_ID => $this->groupId,
+            Handler::PARAM_GROUP_CONFIG => $this->groupConfig,
+            Handler::PARAM_GROUP_CONFIG_CLASS => get_class($this->groupConfig),
         ];
     }
 }

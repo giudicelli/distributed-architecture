@@ -20,6 +20,9 @@ class Config extends ProcessConfig
 
     public function setHosts(array $hosts): self
     {
+        if (empty($hosts)) {
+            throw new \InvalidArgumentException('You cannot set an empty hosts list');
+        }
         $this->hosts = $hosts;
 
         return $this;

@@ -13,15 +13,6 @@ use Psr\Log\LoggerInterface;
  */
 interface ProcessInterface
 {
-    const PARAM_PREFIX = 'gda_';
-    const PARAM_ID = self::PARAM_PREFIX.'id';
-    const PARAM_GROUP_ID = self::PARAM_PREFIX.'groupId';
-    const PARAM_GROUP_CONFIG = self::PARAM_PREFIX.'groupConfig';
-    const PARAM_GROUP_CONFIG_CLASS = self::PARAM_PREFIX.'groupConfigClass';
-
-    const PING_MESSAGE = 'ProcessInterface::ping';
-    const ENDED_MESSAGE = 'ProcessInterface::ended';
-
     const STATUS_RUNNING = 'running';
     const STATUS_STOPPED = 'stopped';
     const STATUS_ERROR = 'error';
