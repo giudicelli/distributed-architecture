@@ -5,9 +5,9 @@ namespace giudicelli\DistributedArchitecture\Master\Handlers\Remote;
 use giudicelli\DistributedArchitecture\Master\ConfigInterface;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcess;
-use giudicelli\DistributedArchitecture\Master\Handlers\GroupConfig;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config as ConfigLocal;
 use giudicelli\DistributedArchitecture\Master\Launcher;
+use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Slave\Handler;
 use Psr\Log\LoggerInterface;
 
@@ -32,11 +32,15 @@ class Process extends AbstractProcess
         string $host,
         int $id,
         int $groupId,
-        GroupConfig $groupConfig,
-        Config $config,
+        GroupConfigInterface $groupConfig,
+        ProcessConfigInterface $config,
         LoggerInterface $logger = null
     ) {
         parent::__construct($id, $groupId, $groupConfig, $config, $logger);
+
+        if (!($config instanceof Config)) {
+            throw new \InvalidArgumentException('config must be an instance of '.Config::class);
+        }
 
         $this->host = $host;
 
@@ -65,13 +69,16 @@ class Process extends AbstractProcess
         return Config::class;
     }
 
-    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ConfigInterface $config, int $idStart, int $groupIdStart): array
+    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart): array
     {
+        $class = get_called_class();
+
+        if (!is_a($config, $class::getConfigClass())) {
+            return [];
+        }
         if (!($config instanceof Config)) {
             return [];
         }
-
-        $class = get_called_class();
 
         $children = [];
         $id = $idStart;

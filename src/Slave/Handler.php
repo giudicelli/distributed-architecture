@@ -8,7 +8,7 @@ use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config;
 use giudicelli\DistributedArchitecture\Master\Launcher;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 
-class Handler
+class Handler implements StoppableInterface
 {
     const PARAM_PREFIX = 'gda_';
     const PARAM_ID = self::PARAM_PREFIX.'id';
@@ -47,11 +47,6 @@ class Handler
         $this->parseParams($params);
     }
 
-    /**
-     * Returns whether the process was asked to be stopped.
-     *
-     * @return bool The stop status
-     */
     public function mustStop(): bool
     {
         return $this->mustStop;
@@ -81,11 +76,6 @@ class Handler
         return $this->groupConfig;
     }
 
-    /**
-     * Pings the master process to let it know this current process is still alive.
-     * It should be used when handling a rather long task, to avoid having the
-     * master process think this process is dead.
-     */
     public function sendPing(): void
     {
         // Avoid flooding
@@ -108,13 +98,6 @@ class Handler
         flush();
     }
 
-    /**
-     * Sleep a certain time duration. Fail if process is requested to stop and send pings to the master during the wait time.
-     *
-     * @param int The wait time
-     *
-     * @return bool Was the wait interrupted by a stop signal
-     */
     public function sleep(int $s): bool
     {
         if ($this->mustStop) {
@@ -128,6 +111,7 @@ class Handler
             usleep(30000);
             $this->sendPing();
         }
+        $this->sendPing();
 
         return true;
     }

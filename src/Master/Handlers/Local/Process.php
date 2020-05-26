@@ -6,6 +6,7 @@ use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
 use giudicelli\DistributedArchitecture\Master\ConfigInterface;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcess;
+use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,8 +27,13 @@ class Process extends AbstractProcess
         return Config::class;
     }
 
-    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ConfigInterface $config, int $idStart, int $groupIdStart): array
+    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart): array
     {
+        $class = get_called_class();
+
+        if (!is_a($config, $class::getConfigClass())) {
+            return [];
+        }
         if (!($config instanceof Config)) {
             return [];
         }

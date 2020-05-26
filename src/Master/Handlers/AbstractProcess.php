@@ -2,6 +2,8 @@
 
 namespace giudicelli\DistributedArchitecture\Master\Handlers;
 
+use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessInterface;
 use giudicelli\DistributedArchitecture\Slave\Handler;
 use Psr\Log\LoggerInterface;
@@ -33,8 +35,8 @@ abstract class AbstractProcess implements ProcessInterface
     public function __construct(
         int $id,
         int $groupId,
-        GroupConfig $groupConfig,
-        ProcessConfig $config,
+        GroupConfigInterface $groupConfig,
+        ProcessConfigInterface $config,
         LoggerInterface $logger = null
     ) {
         if (!$groupConfig->getCommand()) {
@@ -46,7 +48,7 @@ abstract class AbstractProcess implements ProcessInterface
         $this->groupConfig = $groupConfig;
         $this->config = $config;
         $this->logger = $logger;
-        $this->display = $groupConfig->getCommand().'/'.$this->id.'/'.$this->groupId;
+        $this->display = $this->getDisplay();
     }
 
     public function stop(int $signal = 0): void
@@ -78,10 +80,10 @@ abstract class AbstractProcess implements ProcessInterface
                     // The child procces is exiting
                     $this->stop();
 
-                    return self::READ_EMPTY;
+                    return self::READ_SUCCESS;
                 }
                 if (Handler::PING_MESSAGE === $line) {
-                    return self::READ_EMPTY;
+                    return self::READ_SUCCESS;
                 }
 
                 $matches = [];
@@ -174,5 +176,13 @@ abstract class AbstractProcess implements ProcessInterface
             Handler::PARAM_GROUP_CONFIG => $this->groupConfig,
             Handler::PARAM_GROUP_CONFIG_CLASS => get_class($this->groupConfig),
         ];
+    }
+
+    /**
+     * Return the string to identify this process.
+     */
+    protected function getDisplay(): string
+    {
+        return $this->groupConfig->getCommand().'/'.$this->id.'/'.$this->groupId;
     }
 }

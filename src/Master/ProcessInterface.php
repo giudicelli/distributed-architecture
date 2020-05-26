@@ -32,15 +32,15 @@ interface ProcessInterface
     /**
      * Instanciate the processes.
      *
-     * @param LoggerInterface      $logger       The logger, can be null
-     * @param GroupConfigInterface $groupConfig  The group config
-     * @param ConfigInterface      $config       The config
-     * @param int                  $idStart      The current global id
-     * @param int                  $groupIdStart The current group id
+     * @param LoggerInterface        $logger       The logger, can be null
+     * @param GroupConfigInterface   $groupConfig  The group config
+     * @param ProcessConfigInterface $config       The process config
+     * @param int                    $idStart      The current global id
+     * @param int                    $groupIdStart The current group id
      *
      * @return array<ProcessInterface> The instanciated processes
      */
-    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ConfigInterface $config, int $idStart, int $groupIdStart): array;
+    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart): array;
 
     /**
      * Return the number of processes that will be started using a certain config.
