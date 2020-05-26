@@ -262,7 +262,7 @@ class Launcher
                         $processesToRemove[] = $id;
                     } else {
                         // Try to restart task
-                        if (!$child->start()) {
+                        if (!$child->restart()) {
                             $processesToRemove[] = $id;
                         } else {
                             $gotContent = true;
