@@ -42,10 +42,10 @@ abstract class AbstractConfig implements ConfigInterface
         if (!empty($config['path'])) {
             $this->setPath($config['path']);
         }
-        if (!empty($config['priority'])) {
+        if (isset($config['priority'])) {
             $this->setPriority($config['priority']);
         }
-        if (!empty($config['timeout'])) {
+        if (isset($config['timeout'])) {
             $this->setTimeout($config['timeout']);
         }
     }
@@ -63,7 +63,7 @@ abstract class AbstractConfig implements ConfigInterface
     /**
      * Set the cwd of the command, to be set only if it differs from the master process'.
      */
-    public function setPath(?string $path): self
+    public function setPath(?string $path): ConfigInterface
     {
         $this->path = $path;
 
@@ -81,7 +81,7 @@ abstract class AbstractConfig implements ConfigInterface
     /**
      * Set the path of the binary, to be set only if it differs from the master process'.
      */
-    public function setBinPath(?string $binPath): self
+    public function setBinPath(?string $binPath): ConfigInterface
     {
         $this->binPath = $binPath;
 
@@ -99,7 +99,7 @@ abstract class AbstractConfig implements ConfigInterface
     /**
      * Set the process' priority (range from -19, to 19).
      */
-    public function setPriority(?int $priority): self
+    public function setPriority(?int $priority): ConfigInterface
     {
         $this->priority = $priority;
 
@@ -117,7 +117,7 @@ abstract class AbstractConfig implements ConfigInterface
     /**
      * Set the process' timeout. A process is considered timeouted when we haven't received any data from it during a timeout period of time.
      */
-    public function setTimeout(?int $timeout): self
+    public function setTimeout(?int $timeout): ConfigInterface
     {
         $this->timeout = $timeout;
 

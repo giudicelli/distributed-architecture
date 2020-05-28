@@ -26,10 +26,10 @@ abstract class AbstractProcess implements ProcessInterface
     protected $logger;
     protected $host = 'localhost';
 
-    /** @var ProcessConfig */
+    /** @var ProcessConfigInterface */
     protected $config;
 
-    /** @var GroupConfig */
+    /** @var GroupConfigInterface */
     protected $groupConfig;
 
     public function __construct(
@@ -184,5 +184,23 @@ abstract class AbstractProcess implements ProcessInterface
     protected function getDisplay(): string
     {
         return $this->groupConfig->getCommand().'/'.$this->id.'/'.$this->groupId;
+    }
+
+    /**
+     * Return the basic shell command to execute this process.
+     */
+    protected function getShellCommand(array $params): string
+    {
+        if ($this->config->getBinPath()) {
+            $bin = $this->config->getBinPath();
+        } elseif ($this->groupConfig->getBinPath()) {
+            $bin = $this->groupConfig->getBinPath();
+        } else {
+            $bin = PHP_BINARY;
+        }
+
+        $params = escapeshellarg(json_encode($params));
+
+        return $bin.' '.$this->groupConfig->getCommand().' '.$params;
     }
 }

@@ -12,11 +12,26 @@ use giudicelli\DistributedArchitecture\Master\Handlers\ProcessConfig;
 class Config extends ProcessConfig
 {
     /** @var array<string> */
-    private $hosts;
+    protected $hosts;
 
-    private $username;
+    protected $username;
 
-    private $privateKey;
+    protected $privateKey;
+
+    public function fromArray(array $config): void
+    {
+        parent::fromArray($config);
+
+        if (!empty($config['hosts'])) {
+            $this->setHosts($config['hosts']);
+        }
+        if (!empty($config['username'])) {
+            $this->setUsername($config['username']);
+        }
+        if (!empty($config['privateKey'])) {
+            $this->setPrivateKey($config['privateKey']);
+        }
+    }
 
     public function setHosts(array $hosts): self
     {

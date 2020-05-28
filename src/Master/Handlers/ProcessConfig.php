@@ -20,7 +20,7 @@ class ProcessConfig extends AbstractConfig implements ProcessConfigInterface
     {
         parent::fromArray($config);
 
-        if (!empty($config['instancesCount'])) {
+        if (isset($config['instancesCount'])) {
             $this->setInstancesCount($config['instancesCount']);
         }
     }

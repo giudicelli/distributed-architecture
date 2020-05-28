@@ -184,14 +184,6 @@ class Process extends AbstractProcess
      */
     protected function buildShellCommand(string $command, ?array $extraParams = null): string
     {
-        if ($this->config->getBinPath()) {
-            $bin = $this->config->getBinPath();
-        } elseif ($this->groupConfig->getBinPath()) {
-            $bin = $this->groupConfig->getBinPath();
-        } else {
-            $bin = PHP_BINARY;
-        }
-
         if ($this->config->getPath()) {
             $path = $this->config->getPath();
         } elseif ($this->groupConfig->getPath()) {
@@ -209,9 +201,8 @@ class Process extends AbstractProcess
         if ($extraParams) {
             $params = array_merge($params, $extraParams);
         }
-        $params = escapeshellarg(json_encode($params));
 
-        return '(cd '.$path.' && '.$bin.' '.$this->groupConfig->getCommand().' '.$params.') 2>&1';
+        return '(cd '.$path.' && '.$this->getShellCommand($params).') 2>&1';
     }
 
     /**

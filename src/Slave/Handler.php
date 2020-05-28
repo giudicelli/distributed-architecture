@@ -4,11 +4,10 @@ namespace giudicelli\DistributedArchitecture\Slave;
 
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
-use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config;
-use giudicelli\DistributedArchitecture\Master\Launcher;
+use giudicelli\DistributedArchitecture\Master\LauncherInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 
-class Handler implements StoppableInterface
+class Handler implements StoppableInterface, HandlerInterface
 {
     const PARAM_PREFIX = 'gda_';
     const PARAM_ID = self::PARAM_PREFIX.'id';
@@ -52,25 +51,16 @@ class Handler implements StoppableInterface
         return $this->mustStop;
     }
 
-    /**
-     * @return int The unique id of this process across all groups
-     */
     public function getId(): int
     {
         return $this->id;
     }
 
-    /**
-     * @return int The unique id of this process for the group it belongs to
-     */
     public function getGroupId(): int
     {
         return $this->groupId;
     }
 
-    /**
-     * @return array The group config
-     */
     public function getGroupConfig(): GroupConfigInterface
     {
         return $this->groupConfig;
@@ -116,11 +106,11 @@ class Handler implements StoppableInterface
         return true;
     }
 
-    /**
-     * Run this handler.
-     *
-     * @param callable $processCallback if we're not dealing with an internal command, this function will be called to handle the actual task
-     */
+    public function stop(): void
+    {
+        $this->mustStop = true;
+    }
+
     public function run(callable $processCallback): void
     {
         if ($this->isCommand()) {
@@ -236,7 +226,7 @@ class Handler implements StoppableInterface
         return $config;
     }
 
-    protected function getCommandLauncherObject(): Launcher
+    protected function getCommandLauncherObject(): LauncherInterface
     {
         if (empty($this->params[self::PARAM_LAUNCHER_CLASS])) {
             throw new \InvalidArgumentException('Expected '.self::PARAM_LAUNCHER_CLASS.' in params');
@@ -244,12 +234,10 @@ class Handler implements StoppableInterface
 
         $class = $this->params[self::PARAM_LAUNCHER_CLASS];
 
-        if (Launcher::class !== $class) {
-            $reflectionClass = new \ReflectionClass($class);
-            if (!$reflectionClass->isSubclassOf(Launcher::class)
-            || !$reflectionClass->isInstantiable()) {
-                throw new \InvalidArgumentException('Class "'.$class.'" must an instance of "'.Launcher::class.'" and be instanciable');
-            }
+        $reflectionClass = new \ReflectionClass($class);
+        if (!$reflectionClass->implementsInterface(LauncherInterface::class)
+        || !$reflectionClass->isInstantiable()) {
+            throw new \InvalidArgumentException('Class "'.$class.'" must implement "'.LauncherInterface::class.'" and be instanciable');
         }
 
         return new $class();

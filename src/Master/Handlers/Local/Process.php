@@ -193,16 +193,6 @@ class Process extends AbstractProcess
      */
     protected function buildShellCommand(): string
     {
-        $params = escapeshellarg(json_encode($this->buildParams()));
-
-        if ($this->config->getBinPath()) {
-            $bin = $this->config->getBinPath();
-        } elseif ($this->groupConfig->getBinPath()) {
-            $bin = $this->groupConfig->getBinPath();
-        } else {
-            $bin = PHP_BINARY;
-        }
-
-        return $bin.' '.$this->groupConfig->getCommand().' '.$params;
+        return $this->getShellCommand($this->buildParams());
     }
 }

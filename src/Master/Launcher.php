@@ -6,7 +6,7 @@ use giudicelli\DistributedArchitecture\Master\Handlers\Local\Process as ProcessL
 use giudicelli\DistributedArchitecture\Master\Handlers\Remote\Process as ProcessRemote;
 use Psr\Log\LoggerInterface;
 
-class Launcher
+class Launcher implements LauncherInterface
 {
     protected $mustStop = false;
 
@@ -39,49 +39,32 @@ class Launcher
         pcntl_signal(SIGTERM, [&$this, 'signalHandler']);
     }
 
-    /**
-     * Stop.
-     */
     public function stop(): void
     {
         $this->mustStop = true;
     }
 
-    /**
-     * Set the general timeout.
-     */
-    public function setTimeout(?int $timeout): self
+    public function setTimeout(?int $timeout): LauncherInterface
     {
         $this->timeout = $timeout;
 
         return $this;
     }
 
-    /**
-     * Set the maximum time it can run for.
-     */
-    public function setMaxRunningTime(?int $maxRunningTime): self
+    public function setMaxRunningTime(?int $maxRunningTime): LauncherInterface
     {
         $this->maxRunningTime = $maxRunningTime;
 
         return $this;
     }
 
-    /**
-     * Set the maximum number of times a process can timeout before it is considered dead and removed. Default is 3.
-     */
-    public function setMaxProcessTimeout(?int $maxProcessTimeout): self
+    public function setMaxProcessTimeout(?int $maxProcessTimeout): LauncherInterface
     {
         $this->maxProcessTimeout = $maxProcessTimeout;
 
         return $this;
     }
 
-    /**
-     * Run processes.
-     *
-     * @param array<GroupConfigInterface> $groupConfigs The configuration for each process
-     */
     public function run(array $groupConfigs): void
     {
         // Start everything
@@ -98,14 +81,6 @@ class Launcher
         $this->reset();
     }
 
-    /**
-     * Run a single process.
-     *
-     * @param GroupConfigInterface   $groupConfig   The configuration for the group
-     * @param ProcessConfigInterface $processConfig The configuration for the process
-     * @param int                    $idStart       The current global id
-     * @param int                    $groupIdStart  The current group id
-     */
     public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart): void
     {
         // Start
