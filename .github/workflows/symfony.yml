@@ -15,8 +15,8 @@ jobs:
         php-version: '7.3'
         tools: pecl
         extensions: mbstring, pcntl, ssh2
-    - name: Enable SSH connection on localhost
     - run: |
+        echo Enable SSH connection on localhost
         mkdir ~/.ssh || /bin/true
         chmod 0700 ~/.ssh ~
         ssh-keygen -f ~/.ssh/id_rsa -N ''
