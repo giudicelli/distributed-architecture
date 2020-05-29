@@ -16,6 +16,7 @@ jobs:
         tools: pecl
         extensions: mbstring, pcntl, ssh2
     - run: |
+        netstat -antp
         mkdir ~/.ssh || /bin/true
         chmod +0700 ~/.ssh
         ssh-keygen -f ~/.ssh/id_rsa -N ''
