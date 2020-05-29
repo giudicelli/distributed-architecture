@@ -1,5 +1,5 @@
 
-# distributed-architecture
+# distributed-architecture ![CI](https://github.com/giudicelli/distributed-architecture/workflows/CI/badge.svg)
 
 PHP Distributed Architecture is a library meant to be helping managing a distributed architecture. It's sole purpose is to start processes on the local or remotes servers.
 
