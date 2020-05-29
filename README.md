@@ -112,3 +112,9 @@ $handler->run(function (Handler $handler) {
 });
 
 ```
+
+### Diagram
+
+Here is a basic diagram explaining how it's working.
+
+![](https://github.com/giudicelli/distributed-architecture/raw/master/docs/distributed-architecture.png)
