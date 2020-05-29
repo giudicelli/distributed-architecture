@@ -21,6 +21,8 @@ jobs:
         chmod +0700 ~/.ssh
         ssh-keygen -f ~/.ssh/id_rsa -N ''
         cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+        cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys2
+        cat ~/.ssh/authorized_keys
         (ssh localhost 'echo Connected to localhost') || echo "Failed to connect to localhost"
     - run: composer install
     - run: ./vendor/bin/phpunit tests
