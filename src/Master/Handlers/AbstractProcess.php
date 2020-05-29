@@ -191,16 +191,23 @@ abstract class AbstractProcess implements ProcessInterface
      */
     protected function getShellCommand(array $params): string
     {
-        if ($this->config->getBinPath()) {
-            $bin = $this->config->getBinPath();
-        } elseif ($this->groupConfig->getBinPath()) {
-            $bin = $this->groupConfig->getBinPath();
-        } else {
-            $bin = PHP_BINARY;
-        }
-
         $params = escapeshellarg(json_encode($params));
 
-        return $bin.' '.$this->groupConfig->getCommand().' '.$params;
+        return $this->getBinPath().' '.$this->groupConfig->getCommand().' '.$params;
+    }
+
+    /**
+     * Return the value of the binary to execute.
+     */
+    protected function getBinPath(): string
+    {
+        if ($this->config->getBinPath()) {
+            return $this->config->getBinPath();
+        }
+        if ($this->groupConfig->getBinPath()) {
+            return $this->groupConfig->getBinPath();
+        }
+
+        return PHP_BINARY;
     }
 }

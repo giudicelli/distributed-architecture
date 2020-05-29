@@ -103,9 +103,6 @@ class Process extends AbstractProcess
         stream_set_blocking($this->pipes[1], 0);
         stream_set_read_buffer($this->pipes[1], 0);
 
-        stream_set_blocking($this->pipes[2], 0);
-        stream_set_read_buffer($this->pipes[2], 0);
-
         $this->lastSeen = time();
 
         return true;
@@ -113,7 +110,14 @@ class Process extends AbstractProcess
 
     public function softStop(): void
     {
-        posix_kill($this->pid, SIGTERM);
+        // Sometimes proc_open actually forks a bash instead of the asked binary
+        // here we try to send the signal to the pid if it matches getBinPath()
+        // else to all its children that match getBinPath()
+        if (!ProcessHelper::killBinary($this->getBinPath(), $this->pid, SIGTERM)) {
+            // The binary could not be matched, just send the signal
+            // to the pid we have
+            posix_kill($this->pid, SIGTERM);
+        }
     }
 
     protected function readLine(string &$line): int
@@ -128,15 +132,12 @@ class Process extends AbstractProcess
 
         $line = trim(@fgets($this->pipes[1]));
         if (!$line) {
-            $line = trim(@fgets($this->pipes[2]));
-            if (!$line) {
-                $status = proc_get_status($this->proc);
-                if (empty($status['running'])) {
-                    return self::READ_FAILED;
-                }
-
-                return self::READ_EMPTY;
+            $status = proc_get_status($this->proc);
+            if (empty($status['running'])) {
+                return self::READ_FAILED;
             }
+
+            return self::READ_EMPTY;
         }
 
         return self::READ_SUCCESS;
@@ -148,7 +149,9 @@ class Process extends AbstractProcess
             if (SIGKILL === $signal) {
                 ProcessHelper::kill($this->pid, $signal);
             } else {
-                posix_kill($this->pid, $signal);
+                if (!ProcessHelper::killBinary($this->getBinPath(), $this->pid, $signal)) {
+                    posix_kill($this->pid, $signal);
+                }
             }
         }
 
@@ -193,6 +196,6 @@ class Process extends AbstractProcess
      */
     protected function buildShellCommand(): string
     {
-        return $this->getShellCommand($this->buildParams());
+        return $this->getShellCommand($this->buildParams()).' 2>&1';
     }
 }
