@@ -42,6 +42,7 @@ $groupConfigs = [
     (new GroupConfig())
         ->setName('First Group')
         ->setCommand('script1.php')
+        ->setParams(['message' => 'Hello World!'])
         ->setProcessConfigs([
             (new LocalConfig())
                 ->setInstancesCount(3),
