@@ -2,7 +2,11 @@
 
 namespace giudicelli\DistributedArchitecture\Helper;
 
-/** @internal */
+/**
+ * @author Frédéric Giudicelli
+ *
+ * @internal
+ */
 final class ProcessHelper
 {
     /**

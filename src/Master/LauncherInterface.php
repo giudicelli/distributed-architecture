@@ -2,6 +2,11 @@
 
 namespace giudicelli\DistributedArchitecture\Master;
 
+/**
+ * The interface defines the model for a launcher. Its main role is to launch processes.
+ *
+ *  @author Frédéric Giudicelli
+ */
 interface LauncherInterface
 {
     /**

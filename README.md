@@ -107,7 +107,7 @@ $handler->run(function (Handler $handler) {
         // ...
 
         // Let master know we're still running
-        $handler->sendPing();
+        $handler->ping();
     }
 });
 

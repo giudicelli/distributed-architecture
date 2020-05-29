@@ -4,6 +4,11 @@ namespace giudicelli\DistributedArchitecture\Slave;
 
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 
+/**
+ * The interface defines the model for an handler. Its main role is to handle commands send by the LauncherInterface, such as launching a list of processes or to kill them.
+ *
+ *  @author Frédéric Giudicelli
+ */
 interface HandlerInterface
 {
     /**

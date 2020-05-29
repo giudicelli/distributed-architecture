@@ -7,6 +7,11 @@ use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\LauncherInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 
+/**
+ * This class is the implementation of the HandlerInterface interface . Its main role is to handle commands send by the LauncherInterface, such as launching a list of processes or to kill them.
+ *
+ *  @author Frédéric Giudicelli
+ */
 class Handler implements StoppableInterface, HandlerInterface
 {
     const PARAM_PREFIX = 'gda_';
@@ -66,7 +71,7 @@ class Handler implements StoppableInterface, HandlerInterface
         return $this->groupConfig;
     }
 
-    public function sendPing(): void
+    public function ping(): void
     {
         // Avoid flooding
         $t = time();
@@ -99,9 +104,9 @@ class Handler implements StoppableInterface, HandlerInterface
                 return false;
             }
             usleep(30000);
-            $this->sendPing();
+            $this->ping();
         }
-        $this->sendPing();
+        $this->ping();
 
         return true;
     }

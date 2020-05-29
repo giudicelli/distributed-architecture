@@ -2,6 +2,11 @@
 
 namespace giudicelli\DistributedArchitecture\Slave;
 
+/**
+ * The interface defines the model for a stoppable object.
+ *
+ *  @author Frédéric Giudicelli
+ */
 interface StoppableInterface
 {
     /**
@@ -25,5 +30,5 @@ interface StoppableInterface
      * It should be used when handling a rather long task, to avoid having the
      * master process think this process is dead.
      */
-    public function sendPing(): void;
+    public function ping(): void;
 }

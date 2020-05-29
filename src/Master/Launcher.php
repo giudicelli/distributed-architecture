@@ -6,6 +6,11 @@ use giudicelli\DistributedArchitecture\Master\Handlers\Local\Process as ProcessL
 use giudicelli\DistributedArchitecture\Master\Handlers\Remote\Process as ProcessRemote;
 use Psr\Log\LoggerInterface;
 
+/**
+ * This class is the implementation of the LauncherInterface interface. Its main role is to launch processes.
+ *
+ *  @author Frédéric Giudicelli
+ */
 class Launcher implements LauncherInterface
 {
     protected $mustStop = false;
