@@ -22,6 +22,4 @@ jobs:
         ssh-keygen -f ~/.ssh/id_rsa -N ''
         cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
     - run: composer install
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v2
     - run: ./vendor/bin/phpunit tests
