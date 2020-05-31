@@ -44,7 +44,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SingleLine.php');
 
         /** @var array<ProcessInterface> */
-        $children = LocalProcess::instanciate($this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1);
+        $children = LocalProcess::instanciate($this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
         $this->assertCount(1, $children, 'Instanciate a single local process');
 
         $this->assertTrue($children[0]->start(), 'Start process');
@@ -243,6 +243,35 @@ final class LauncherTest extends TestCase
     }
 
     /**
+     * @group local
+     */
+    public function testLocalReadTimeout(): void
+    {
+        $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SlaveFile.php');
+        $groupConfig
+            ->setParams(['neverDie' => true, 'message' => ''])
+            ->setTimeout(2)
+        ;
+
+        $master = new Launcher($this->logger);
+
+        $master->run([$groupConfig]);
+
+        $output = $this->logger->getOutput();
+        sort($output);
+
+        $expected = [
+            'error - [test] [localhost] [tests/SlaveFile.php/1/1] Timeout reached while waiting for data...',
+            'error - [test] [localhost] [tests/SlaveFile.php/1/1] Timeout reached while waiting for data...',
+            'error - [test] [localhost] [tests/SlaveFile.php/1/1] Timeout reached while waiting for data...',
+            'notice - [test] [localhost] [tests/SlaveFile.php/1/1] Ended',
+            'notice - [test] [localhost] [tests/SlaveFile.php/1/1] Ended',
+            'notice - [test] [localhost] [tests/SlaveFile.php/1/1] Ended',
+        ];
+        $this->assertEquals($expected, $output);
+    }
+
+    /**
      * @group remote
      * @group mixed
      */
@@ -251,7 +280,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SingleLine.php');
 
         /** @var array<ProcessInterface> */
-        $children = RemoteProcess::instanciate($this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1);
+        $children = RemoteProcess::instanciate($this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
         $this->assertCount(1, $children, 'Instanciate a single remote process');
 
         $this->assertTrue($children[0]->start(), 'Connect to 127.0.0.1');
@@ -475,6 +504,38 @@ final class LauncherTest extends TestCase
             'notice - [test] [127.0.0.1] Ended',
             'notice - [test] [127.0.0.1] [master] Received SIGTERM, stopping',
             'notice - [test] [127.0.0.1] [master] Stopping...',
+        ];
+        $this->assertEquals($expected, $output);
+    }
+
+    /**
+     * @depends testRemoteConnectivity
+     * @group remote
+     */
+    public function testRemoteReadTimeout(): void
+    {
+        $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SlaveFile.php');
+        $groupConfig
+            ->setParams(['neverDie' => true, 'message' => ''])
+            ->setTimeout(2)
+        ;
+
+        $master = new Launcher($this->logger);
+
+        $master->run([$groupConfig]);
+
+        $output = $this->logger->getOutput();
+        sort($output);
+
+        $expected = [
+            'debug - [test] [127.0.0.1] Connected to host',
+            'error - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Timeout reached while waiting for data...',
+            'error - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Timeout reached while waiting for data...',
+            'error - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Timeout reached while waiting for data...',
+            'notice - [test] [127.0.0.1] Ended',
+            'notice - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Ended',
+            'notice - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Ended',
+            'notice - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Ended',
         ];
         $this->assertEquals($expected, $output);
     }

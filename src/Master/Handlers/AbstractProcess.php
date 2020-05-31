@@ -18,10 +18,12 @@ use Psr\Log\LoggerInterface;
 abstract class AbstractProcess implements ProcessInterface
 {
     protected $display = '';
-    protected $status = '';
+    protected $status = self::STATUS_STOPPED;
     protected $lastSeen = 0;
+    protected $lastSeenTimeout = 0;
     protected $id = 0;
     protected $groupId = 0;
+    protected $groupCount = 0;
     protected $timeoutsCount = 0;
     protected $logger;
     protected $host = 'localhost';
@@ -35,6 +37,7 @@ abstract class AbstractProcess implements ProcessInterface
     public function __construct(
         int $id,
         int $groupId,
+        int $groupCount,
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
         LoggerInterface $logger = null
@@ -45,12 +48,32 @@ abstract class AbstractProcess implements ProcessInterface
 
         $this->id = $id;
         $this->groupId = $groupId;
+        $this->groupCount = $groupCount;
         $this->groupConfig = $groupConfig;
         $this->config = $config;
         $this->logger = $logger;
         $this->display = $this->getDisplay();
     }
 
+    /**
+     * {@inheritdoc}
+     */
+    public function start(): bool
+    {
+        if (!$this->run()) {
+            $this->status = self::STATUS_ERROR;
+
+            return false;
+        }
+        $this->lastSeen = $this->lastSeenTimeout = time();
+        $this->status = self::STATUS_RUNNING;
+
+        return true;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function stop(int $signal = 0): void
     {
         $this->kill($signal);
@@ -60,6 +83,9 @@ abstract class AbstractProcess implements ProcessInterface
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function restart(int $signal = 0): bool
     {
         $this->stop($signal);
@@ -67,6 +93,9 @@ abstract class AbstractProcess implements ProcessInterface
         return $this->start();
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function read(): int
     {
         $line = '';
@@ -74,11 +103,12 @@ abstract class AbstractProcess implements ProcessInterface
         switch ($status) {
             case self::READ_SUCCESS:
                 $this->timeoutsCount = 0;
-                $this->lastSeen = time();
+                $this->lastSeen = $this->lastSeenTimeout = time();
 
                 if (Handler::ENDED_MESSAGE === $line) {
                     // The child procces is exiting
-                    $this->stop();
+                    $this->status = self::STATUS_STOPPED;
+                    $this->logMessage('notice', 'Ended');
 
                     return self::READ_SUCCESS;
                 }
@@ -95,17 +125,11 @@ abstract class AbstractProcess implements ProcessInterface
 
                 return $status;
             case self::READ_EMPTY:
-                if ($this->config->getTimeout()) {
-                    $timeout = $this->config->getTimeout();
-                } elseif ($this->groupConfig->getTimeout()) {
-                    $timeout = $this->groupConfig->getTimeout();
-                } else {
-                    $timeout = 0;
-                }
-                if ($timeout && (time() - $this->lastSeen) >= $timeout) {
+                $timeout = $this->getTimeout();
+                if ($timeout && (time() - $this->lastSeenTimeout) >= $timeout) {
                     ++$this->timeoutsCount;
-                    $this->logMessage('error', 'Process has not sent any data in a while, killing it.');
-                    $this->stop(SIGKILL);
+                    $this->lastSeenTimeout = time();
+                    $this->logMessage('error', 'Timeout reached while waiting for data...');
 
                     return self::READ_TIMEOUT;
                 }
@@ -118,25 +142,60 @@ abstract class AbstractProcess implements ProcessInterface
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getId(): int
     {
         return $this->id;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getGroupId(): int
     {
         return $this->groupId;
     }
 
+    /**
+     * {@inheritdoc}
+     */
+    public function getGroupCount(): int
+    {
+        return $this->groupCount;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function getStatus(): string
     {
         return $this->status;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getTimeoutsCount(): int
     {
         return $this->timeoutsCount;
     }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getLastSeen(): int
+    {
+        return $this->lastSeen;
+    }
+
+    /**
+     * Do the actual start.
+     *
+     * @param int $signal The signal to send the process to kill it
+     */
+    abstract protected function run(): bool;
 
     /**
      * Kill the process and clean up.
@@ -171,8 +230,9 @@ abstract class AbstractProcess implements ProcessInterface
     protected function buildParams(): array
     {
         return [
-            Handler::PARAM_ID => $this->id,
-            Handler::PARAM_GROUP_ID => $this->groupId,
+            Handler::PARAM_ID => $this->getId(),
+            Handler::PARAM_GROUP_ID => $this->getGroupId(),
+            Handler::PARAM_GROUP_COUNT => $this->getGroupCount(),
             Handler::PARAM_GROUP_CONFIG => $this->groupConfig,
             Handler::PARAM_GROUP_CONFIG_CLASS => get_class($this->groupConfig),
         ];
@@ -188,6 +248,10 @@ abstract class AbstractProcess implements ProcessInterface
 
     /**
      * Return the basic shell command to execute this process.
+     *
+     * @param $params the params to pass to the command
+     *
+     * @return string the shell command
      */
     protected function getShellCommand(array $params): string
     {
@@ -209,5 +273,18 @@ abstract class AbstractProcess implements ProcessInterface
         }
 
         return PHP_BINARY;
+    }
+
+    /** Return the configured timeout for this process */
+    protected function getTimeout(): int
+    {
+        if (-1 !== $this->config->getTimeout()) {
+            return $this->config->getTimeout();
+        }
+        if (-1 !== $this->groupConfig->getTimeout()) {
+            return $this->groupConfig->getTimeout();
+        }
+
+        return 30;
     }
 }

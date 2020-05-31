@@ -17,6 +17,7 @@ class Handler implements StoppableInterface, HandlerInterface
     const PARAM_PREFIX = 'gda_';
     const PARAM_ID = self::PARAM_PREFIX.'id';
     const PARAM_GROUP_ID = self::PARAM_PREFIX.'groupId';
+    const PARAM_GROUP_COUNT = self::PARAM_PREFIX.'groupCount';
     const PARAM_GROUP_CONFIG = self::PARAM_PREFIX.'groupConfig';
     const PARAM_GROUP_CONFIG_CLASS = self::PARAM_PREFIX.'groupConfigClass';
 
@@ -38,6 +39,8 @@ class Handler implements StoppableInterface, HandlerInterface
 
     protected $groupId = 0;
 
+    protected $groupCount = 0;
+
     protected $lastSentPing = 0;
 
     /** @var array */
@@ -46,31 +49,57 @@ class Handler implements StoppableInterface, HandlerInterface
     /** @var GroupConfigInterface */
     protected $groupConfig;
 
+    /**
+     * @param string $params the JSON encoded params passed by the master process
+     */
     public function __construct(string $params)
     {
         $this->parseParams($params);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function mustStop(): bool
     {
         return $this->mustStop;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getId(): int
     {
         return $this->id;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getGroupId(): int
     {
         return $this->groupId;
     }
 
+    /**
+     * {@inheritdoc}
+     */
+    public function getGroupCount(): int
+    {
+        return $this->groupCount;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function getGroupConfig(): GroupConfigInterface
     {
         return $this->groupConfig;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function ping(): void
     {
         // Avoid flooding
@@ -93,6 +122,9 @@ class Handler implements StoppableInterface, HandlerInterface
         flush();
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function sleep(int $s): bool
     {
         if ($this->mustStop) {
@@ -111,11 +143,17 @@ class Handler implements StoppableInterface, HandlerInterface
         return true;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function stop(): void
     {
         $this->mustStop = true;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function run(callable $processCallback): void
     {
         if ($this->isCommand()) {
@@ -131,6 +169,9 @@ class Handler implements StoppableInterface, HandlerInterface
         }
     }
 
+    /**
+     * @internal
+     */
     public function signalHandler(int $signo)
     {
         switch ($signo) {
@@ -141,6 +182,11 @@ class Handler implements StoppableInterface, HandlerInterface
         }
     }
 
+    /**
+     * Parse the params and verify required entries are present.
+     *
+     * @param string $params the JSON encoded params passed by the master
+     */
     protected function parseParams(string $params): void
     {
         $this->params = json_decode($params, true);
@@ -157,9 +203,17 @@ class Handler implements StoppableInterface, HandlerInterface
         }
         $this->groupId = $this->params[self::PARAM_GROUP_ID];
 
+        if (empty($this->params[self::PARAM_GROUP_COUNT])) {
+            throw new \InvalidArgumentException('Expected '.self::PARAM_GROUP_COUNT.' in params');
+        }
+        $this->groupCount = $this->params[self::PARAM_GROUP_COUNT];
+
         $this->loadGroupConfigObject();
     }
 
+    /**
+     * Load the group config. It uses the value in params to know will class to instanciate.
+     */
     protected function loadGroupConfigObject(): void
     {
         if (empty($this->params[self::PARAM_GROUP_CONFIG])) {
@@ -181,11 +235,17 @@ class Handler implements StoppableInterface, HandlerInterface
         $this->groupConfig->fromArray($this->params[self::PARAM_GROUP_CONFIG]);
     }
 
+    /**
+     * Did the master send us a command or are we a final process meant to execute the task.
+     */
     protected function isCommand(): bool
     {
         return !empty($this->params[self::PARAM_COMMAND]);
     }
 
+    /**
+     * Handle a command sent by the master.
+     */
     protected function handleCommand(): void
     {
         if (!$this->isCommand()) {
@@ -207,6 +267,11 @@ class Handler implements StoppableInterface, HandlerInterface
         }
     }
 
+    /**
+     * Load the ProcessConfigInterface object passed by the master to execute a command.
+     *
+     * @return ProcessConfigInterface the loaded process config
+     */
     protected function getCommandConfigObject(): ProcessConfigInterface
     {
         if (empty($this->params[self::PARAM_CONFIG])) {
@@ -231,6 +296,11 @@ class Handler implements StoppableInterface, HandlerInterface
         return $config;
     }
 
+    /**
+     * Instanciate the LauncherInterface object used by the master.
+     *
+     * @return LauncherInterface the launcher instance
+     */
     protected function getCommandLauncherObject(): LauncherInterface
     {
         if (empty($this->params[self::PARAM_LAUNCHER_CLASS])) {
@@ -248,6 +318,13 @@ class Handler implements StoppableInterface, HandlerInterface
         return new $class();
     }
 
+    /**
+     * Return a unique pid file for as process config.
+     *
+     * @param ProcessConfigInterface $config The process config
+     *
+     * @return string the pid file
+     */
     protected function getPidFileFromConfig(ProcessConfigInterface $config): string
     {
         $uniqueId = sha1($this->id.'-'.$this->groupId.'-'.$this->groupConfig->getHash().'-'.$config->getHash());
@@ -255,6 +332,11 @@ class Handler implements StoppableInterface, HandlerInterface
         return sys_get_temp_dir().'/gda-'.$uniqueId.'.pid';
     }
 
+    /**
+     * Handle the launch command sent by the master.
+     *
+     * @param ProcessConfigInterface $config The process config
+     */
     protected function handleLaunch(ProcessConfigInterface $config): void
     {
         // Save the pid file, it will allow handleKill to find us
@@ -262,11 +344,16 @@ class Handler implements StoppableInterface, HandlerInterface
         file_put_contents($pidFile, getmypid());
 
         $masterProcess = $this->getCommandLauncherObject();
-        $masterProcess->runSingle($this->groupConfig, $config, $this->id, $this->groupId);
+        $masterProcess->runSingle($this->groupConfig, $config, $this->id, $this->groupId, $this->groupCount);
 
         @unlink($pidFile);
     }
 
+    /**
+     * Handle the kill command sent by the master.
+     *
+     * @param ProcessConfigInterface $config The process config
+     */
     protected function handleKill(ProcessConfigInterface $config): void
     {
         $pidFile = $this->getPidFileFromConfig($config);

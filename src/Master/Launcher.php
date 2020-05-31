@@ -44,11 +44,17 @@ class Launcher implements LauncherInterface
         pcntl_signal(SIGTERM, [&$this, 'signalHandler']);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function stop(): void
     {
         $this->mustStop = true;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setTimeout(?int $timeout): LauncherInterface
     {
         $this->timeout = $timeout;
@@ -56,6 +62,9 @@ class Launcher implements LauncherInterface
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setMaxRunningTime(?int $maxRunningTime): LauncherInterface
     {
         $this->maxRunningTime = $maxRunningTime;
@@ -63,6 +72,9 @@ class Launcher implements LauncherInterface
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setMaxProcessTimeout(?int $maxProcessTimeout): LauncherInterface
     {
         $this->maxProcessTimeout = $maxProcessTimeout;
@@ -70,15 +82,25 @@ class Launcher implements LauncherInterface
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function run(array $groupConfigs): void
     {
+        // First count the total number of processes
+        // that will be launched in each group
+        $groupCounts = [];
+        foreach ($groupConfigs as $index => $groupConfig) {
+            $groupCounts[$index] = $this->countGroup($groupConfig);
+        }
+
         // Start everything
         $idStart = 1;
-        foreach ($groupConfigs as $groupConfig) {
+        foreach ($groupConfigs as $index => $groupConfig) {
             if ($this->mustStop) {
                 break;
             }
-            $idStart += $this->startGroup($groupConfig, $idStart);
+            $idStart += $this->startGroup($groupConfig, $idStart, 1, $groupCounts[$index]);
         }
 
         $this->startedTime = time();
@@ -86,10 +108,13 @@ class Launcher implements LauncherInterface
         $this->reset();
     }
 
-    public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart): void
+    /**
+     * {@inheritdoc}
+     */
+    public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount): void
     {
         // Start
-        $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart);
+        $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount);
 
         $this->startedTime = time();
 
@@ -111,6 +136,11 @@ class Launcher implements LauncherInterface
         }
     }
 
+    /**
+     * Return the list of ProcessInterface handled by this launcher.
+     *
+     * @return array<string> The list of ProcessInterface classes
+     */
     protected function getProcessHandlersList(): array
     {
         return [
@@ -119,7 +149,10 @@ class Launcher implements LauncherInterface
         ];
     }
 
-    protected function loadReflectionData()
+    /**
+     * Build the list of mapped ProcessConfigInterface/ProcessInterface. Each ProcessInterface can handle a single ProcessConfigInterface and each ProcessConfigInterface is handled by a single ProcessInterface. The method will let us know which ProcessInterface to create depending on the ProcessConfigInterface passed by the user.
+     */
+    protected function loadReflectionData(): void
     {
         foreach ($this->getProcessHandlersList() as $processClass) {
             if (!in_array(ProcessInterface::class, class_implements($processClass))) {
@@ -130,11 +163,39 @@ class Launcher implements LauncherInterface
         }
     }
 
-    protected function startGroup(GroupConfigInterface $groupConfig, int $idStart, int $groupIdStart = 1): int
+    /**
+     * Count the number of processes that will be launched for a certain group.
+     *
+     * @param GroupConfigInterface $groupConfig The group configuration
+     *
+     * @return int the number of processes
+     */
+    protected function countGroup(GroupConfigInterface $groupConfig): int
+    {
+        $count = 0;
+        foreach ($groupConfig->getProcessConfigs() as $processConfig) {
+            $processClass = $this->getConfigProcess($processConfig);
+            $count += call_user_func([$processClass, 'willStartCount'], $processConfig);
+        }
+
+        return $count;
+    }
+
+    /**
+     * Start a group of processes.
+     *
+     * @param GroupConfigInterface $groupConfig  The group configuration
+     * @param int                  $idStart      The current value of the global id
+     * @param int                  $groupIdStart The current value of the group id
+     * @param int                  $groupCount   The total number of processes in the group
+     *
+     * @return int the number of started processes
+     */
+    protected function startGroup(GroupConfigInterface $groupConfig, int $idStart, int $groupIdStart, int $groupCount): int
     {
         $processesCount = 0;
         foreach ($groupConfig->getProcessConfigs() as $processConfig) {
-            $count = $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart);
+            $count = $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount);
 
             $idStart += $count;
             $groupIdStart += $count;
@@ -144,15 +205,21 @@ class Launcher implements LauncherInterface
         return $processesCount;
     }
 
-    protected function startGroupProcess(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart): int
+    /**
+     * Start processes defined in a ProcessConfigInterface.
+     *
+     * @param GroupConfigInterface   $groupConfig   The group configuration
+     * @param ProcessConfigInterface $processConfig The process configuration
+     * @param int                    $idStart       The current value of the global id
+     * @param int                    $groupIdStart  The current value of the group id
+     * @param int                    $groupCount    The total number of processes in the group
+     *
+     * @return int the number of started processes
+     */
+    protected function startGroupProcess(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount): int
     {
-        $processConfigClass = get_class($processConfig);
-        if (!isset($this->mappingConfigProcess[$processConfigClass])) {
-            throw new \InvalidArgumentException('Config class "'.$processConfigClass.'" is not handled by any "'.ProcessInterface::class.'"');
-        }
-
-        $processClass = $this->mappingConfigProcess[$processConfigClass];
-        $children = call_user_func([$processClass, 'instanciate'], $this->logger, $groupConfig, $processConfig, $idStart, $groupIdStart);
+        $processClass = $this->getConfigProcess($processConfig);
+        $children = call_user_func([$processClass, 'instanciate'], $this->logger, $groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount);
         foreach ($children as $child) {
             if ($child->start()) {
                 $this->children[$child->getId()] = $child;
@@ -162,6 +229,26 @@ class Launcher implements LauncherInterface
         return call_user_func([$processClass, 'willStartCount'], $processConfig);
     }
 
+    /**
+     * Return the ProcessInterface class that handles the ProcessConfigInterface.
+     *
+     * @param ProcessConfigInterface $processConfig The config
+     *
+     * @return string The ProcessInterface class
+     */
+    protected function getConfigProcess(ProcessConfigInterface $processConfig): string
+    {
+        $processConfigClass = get_class($processConfig);
+        if (!isset($this->mappingConfigProcess[$processConfigClass])) {
+            throw new \InvalidArgumentException('Config class "'.$processConfigClass.'" is not handled by any "'.ProcessInterface::class.'"');
+        }
+
+        return $this->mappingConfigProcess[$processConfigClass];
+    }
+
+    /**
+     * Handle all the children processes.
+     */
     protected function handleChildren(): void
     {
         $lastContent = time();
@@ -181,6 +268,13 @@ class Launcher implements LauncherInterface
             } else {
                 // 100ms
                 usleep(100000);
+            }
+
+            // Purge the children that are not running
+            foreach ($this->children as $id => $child) {
+                if (ProcessInterface::STATUS_RUNNING !== $child->getStatus()) {
+                    $this->removeChild($id);
+                }
             }
 
             if (!$stopStartTime) {
@@ -216,7 +310,7 @@ class Launcher implements LauncherInterface
         }
 
         if (!empty($this->children)) {
-            // There are some remaining s.
+            // There are some remaining children.
             // We need to force kill them
             sleep(30);
             foreach ($this->children as $child) {
@@ -225,11 +319,13 @@ class Launcher implements LauncherInterface
         }
     }
 
+    /**
+     * Perform a read on all the children.
+     */
     protected function readChildren(bool $stopping): bool
     {
         $gotContent = false;
-        $processesToRemove = [];
-        foreach ($this->children as $id => $child) {
+        foreach ($this->children as $child) {
             // Read content from process
             switch ($child->read()) {
                 case ProcessInterface::READ_SUCCESS:
@@ -237,33 +333,30 @@ class Launcher implements LauncherInterface
 
                     break;
                 case ProcessInterface::READ_TIMEOUT:
-                    if ($stopping || ($this->maxProcessTimeout && $child->getTimeoutsCount() >= $this->maxProcessTimeout)) {
-                        // We need to remove this process
-                        $processesToRemove[] = $id;
-                    } else {
+                    if (($this->maxProcessTimeout && $child->getTimeoutsCount() >= $this->maxProcessTimeout)) {
+                        $child->stop(SIGKILL);
+                    } elseif ($stopping) {
+                        // Timeout reading data, and we're stopping
+                        // we can stop the child
+                        $child->stop();
+                    } elseif ($child->restart(SIGKILL)) {
                         // Try to restart task
-                        if (!$child->restart()) {
-                            $processesToRemove[] = $id;
-                        } else {
-                            $gotContent = true;
-                        }
+                        $gotContent = true;
                     }
 
                     break;
-                case ProcessInterface::READ_FAILED:
-                    $processesToRemove[] = $id;
-
-                    break;
             }
-        }
-        foreach ($processesToRemove as $id) {
-            $this->removeChild($id);
         }
 
         return $gotContent;
     }
 
-    protected function removeChild($id): void
+    /**
+     * Remove a single child from our children list.
+     *
+     * @param int $id The id of the child to remove
+     */
+    protected function removeChild(int $id): void
     {
         if (!isset($this->children[$id])) {
             return;
@@ -272,6 +365,9 @@ class Launcher implements LauncherInterface
         unset($this->children[$id]);
     }
 
+    /**
+     * Reset this launcher.
+     */
     protected function reset(): void
     {
         $this->mustStop = false;

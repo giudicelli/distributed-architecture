@@ -23,7 +23,7 @@ abstract class AbstractConfig implements ConfigInterface
     protected $priority;
 
     /** @var int */
-    protected $timeout = 300;
+    protected $timeout = -1;
 
     public function getHash(): string
     {

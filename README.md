@@ -15,7 +15,9 @@ To run your distributed architecture you will mainly need to use two classes Mas
 
 ### Master process
 
-Here is a simple example to start the master process.
+Here is a simple example to start the master process. 
+
+The "Launcher::run" method will return once every slave process in every group will exit.
 
 ```php
 use giudicelli\DistributedArchitecture\Master\Handlers\GroupConfig;
@@ -84,7 +86,7 @@ A total of 6 instances of "script2.php" will run.
 
 ### Slave process
 
-A slave process must use the "Slave\Handler" class, as the master may be sending commands that need to handled. It also allows you're script to do a clean exit upon the master's request. Using the above example, here is an example of an implementation for "script1.php" or "script1.php".
+A slave process must use the "Slave\Handler" class, as the master may be sending commands that need to handled. It also allows you're script to do a clean exit upon the master's request. Using the above example, here is an example of an implementation for "script1.php" or "script2.php".
 
 ```php
 use giudicelli\DistributedArchitecture\Slave\Handler;
@@ -100,6 +102,9 @@ $handler->run(function (Handler $handler) {
 
     $params = $groupConfig->getParams();
 
+    echo "My ID : ".$handler->getId()."\n";
+    echo "My Group ID : ".$handler->getGroupId()."\n";
+    echo "There are a total of ".$handler->getGroupCount()." processes in my group named \"".$groupConfig->getName()."\"\n";
     echo $params['message']."\n";
 
     while(!$handler->mustStop()) {

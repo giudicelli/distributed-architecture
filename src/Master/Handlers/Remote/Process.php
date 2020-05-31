@@ -32,11 +32,12 @@ class Process extends AbstractProcess
         string $host,
         int $id,
         int $groupId,
+        int $groupCount,
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
         LoggerInterface $logger = null
     ) {
-        parent::__construct($id, $groupId, $groupConfig, $config, $logger);
+        parent::__construct($id, $groupId, $groupCount, $groupConfig, $config, $logger);
 
         if (!($config instanceof Config)) {
             throw new \InvalidArgumentException('config must be an instance of '.Config::class);
@@ -64,12 +65,18 @@ class Process extends AbstractProcess
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public static function getConfigClass(): string
     {
         return Config::class;
     }
 
-    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart): array
+    /**
+     * {@inheritdoc}
+     */
+    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
     {
         $class = get_called_class();
 
@@ -84,7 +91,7 @@ class Process extends AbstractProcess
         $id = $idStart;
         $groupId = $groupIdStart;
         foreach ($config->getHosts() as $host) {
-            $children[] = new $class($host, $id, $groupId, $groupConfig, $config, $logger);
+            $children[] = new $class($host, $id, $groupId, $groupCount, $groupConfig, $config, $logger);
             $id += $config->getInstancesCount();
             $groupId += $config->getInstancesCount();
         }
@@ -92,6 +99,9 @@ class Process extends AbstractProcess
         return $children;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public static function willStartCount(ConfigInterface $config): int
     {
         if (!($config instanceof Config)) {
@@ -101,29 +111,34 @@ class Process extends AbstractProcess
         return count($config->getHosts()) * $config->getInstancesCount();
     }
 
-    public function start(): bool
-    {
-        $cmd = $this->buildShellCommand(Handler::PARAM_COMMAND_LAUNCH);
-
-        $info = $this->remoteExec($cmd);
-        if (!$info) {
-            $this->status = self::STATUS_ERROR;
-
-            return false;
-        }
-        $this->connection = $info['connection'];
-        $this->stream = $info['stream'];
-
-        $this->lastSeen = time();
-
-        return true;
-    }
-
+    /**
+     * {@inheritdoc}
+     */
     public function softStop(): void
     {
         $this->sendSignal(SIGTERM);
     }
 
+    /**
+     * {@inheritdoc}
+     */
+    protected function run(): bool
+    {
+        $cmd = $this->buildShellCommand(Handler::PARAM_COMMAND_LAUNCH);
+
+        $info = $this->remoteExec($cmd);
+        if (!$info) {
+            return false;
+        }
+        $this->connection = $info['connection'];
+        $this->stream = $info['stream'];
+
+        return true;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     protected function readLine(string &$line): int
     {
         // Handle was closed somewhere else
@@ -141,6 +156,9 @@ class Process extends AbstractProcess
         return self::READ_SUCCESS;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     protected function kill(int $signal = 0): void
     {
         if ($signal) {
@@ -158,6 +176,9 @@ class Process extends AbstractProcess
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     protected function logMessage(string $level, string $message, array $context = []): void
     {
         if ($this->logger) {
@@ -241,11 +262,8 @@ class Process extends AbstractProcess
             return;
         }
 
-        if ($this->config->getTimeout()) {
-            $timeout = $this->config->getTimeout();
-        } elseif ($this->groupConfig->getTimeout()) {
-            $timeout = $this->groupConfig->getTimeout();
-        } else {
+        $timeout = $this->getTimeout();
+        if (!$timeout) {
             $timeout = 30;
         }
         $st = time();
@@ -333,5 +351,26 @@ class Process extends AbstractProcess
             'connection' => $connection,
             'stream' => $stream,
         ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getTimeout(): int
+    {
+        // We need to overide this method.
+        // The local processes that will be launched
+        // will have their own timeout and
+        // their value will be the same as this
+        // remote process.
+        // So we might end up killing the remote process before
+        // its local process children have a chance to be restarted.
+
+        $timeout = parent::getTimeout();
+        if (!$timeout) {
+            return 0;
+        }
+
+        return $timeout + 30;
     }
 }

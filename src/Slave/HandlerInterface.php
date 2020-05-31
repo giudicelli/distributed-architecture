@@ -22,6 +22,11 @@ interface HandlerInterface
     public function getGroupId(): int;
 
     /**
+     * @return int The total number of processes in the group it belongs to
+     */
+    public function getGroupCount(): int;
+
+    /**
      * @return array The group config
      */
     public function getGroupConfig(): GroupConfigInterface;

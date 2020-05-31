@@ -17,7 +17,7 @@ $handler->run(function (Handler $handler) {
 
     $params = $groupConfig->getParams();
 
-    if (!empty($params['message'])) {
+    if (isset($params['message'])) {
         echo $params['message']."\n";
     } else {
         echo "Child {$handler->getId()} {$handler->getGroupId()} \n";

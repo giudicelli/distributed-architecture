@@ -37,10 +37,11 @@ interface ProcessInterface
      * @param ProcessConfigInterface $config       The process config
      * @param int                    $idStart      The current global id
      * @param int                    $groupIdStart The current group id
+     * @param int                    $groupCount   The total number of processes in group
      *
      * @return array<ProcessInterface> The instanciated processes
      */
-    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart): array;
+    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array;
 
     /**
      * Return the number of processes that will be started using a certain config.
@@ -101,6 +102,13 @@ interface ProcessInterface
     public function getGroupId(): int;
 
     /**
+     * Get the total number of started processes for the group this process belongs to.
+     *
+     * @return int The numbes of processes
+     */
+    public function getGroupCount(): int;
+
+    /**
      * Get the status of the process.
      *
      * @return string The status, one of STATUS_RUNNING, STATUS_STOPPED, STATUS_ERROR
@@ -108,9 +116,16 @@ interface ProcessInterface
     public function getStatus(): string;
 
     /**
-     * Get the number of times the process timedout.
+     * Get the number of times in a row the process timedout.
      *
      * @return int The count
      */
     public function getTimeoutsCount(): int;
+
+    /**
+     * Return the timestamp of the last time we received data from this process.
+     *
+     * @return int The timestamp
+     */
+    public function getLastSeen(): int;
 }
