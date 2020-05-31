@@ -4,8 +4,10 @@ namespace giudicelli\DistributedArchitecture\Master\Handlers\Local;
 
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
 use giudicelli\DistributedArchitecture\Master\ConfigInterface;
+use giudicelli\DistributedArchitecture\Master\EventsInterface;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcess;
+use giudicelli\DistributedArchitecture\Master\LauncherInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use Psr\Log\LoggerInterface;
 
@@ -33,7 +35,7 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
-    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
+    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, ?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
     {
         $class = get_called_class();
 
@@ -48,7 +50,7 @@ class Process extends AbstractProcess
 
         $children = [];
         for ($i = 0, $id = $idStart, $groupId = $groupIdStart; $i < $config->getInstancesCount(); ++$i, ++$id, ++$groupId) {
-            $children[] = new $class($id, $groupId, $groupCount, $groupConfig, $config, $logger);
+            $children[] = new $class($id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events, $logger);
         }
 
         return $children;
@@ -66,6 +68,9 @@ class Process extends AbstractProcess
         return $config->getInstancesCount();
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function softStop(): void
     {
         // Sometimes proc_open actually forks a bash instead of the asked binary
@@ -76,6 +81,14 @@ class Process extends AbstractProcess
             // to the pid we have
             posix_kill($this->pid, SIGTERM);
         }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function isEventCompatible(): bool
+    {
+        return true;
     }
 
     /**

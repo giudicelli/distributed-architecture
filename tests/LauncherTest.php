@@ -43,8 +43,9 @@ final class LauncherTest extends TestCase
     {
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SingleLine.php');
 
+        $launcher = new Launcher(null);
         /** @var array<ProcessInterface> */
-        $children = LocalProcess::instanciate($this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
+        $children = LocalProcess::instanciate($launcher, null, $this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
         $this->assertCount(1, $children, 'Instanciate a single local process');
 
         $this->assertTrue($children[0]->start(), 'Start process');
@@ -75,12 +76,7 @@ final class LauncherTest extends TestCase
     {
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SlaveFile.php');
 
-        $master = new Launcher($this->logger);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig]);
 
         $expected = [
             'info - [test] [localhost] [tests/SlaveFile.php/1/1] Child 1 1',
@@ -98,12 +94,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->getProcessConfigs()[0]->setInstancesCount(2);
 
-        $master = new Launcher($this->logger);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig]);
 
         $expected = [
             'info - [test] [localhost] [tests/SlaveFile.php/1/1] Child 1 1',
@@ -126,12 +117,7 @@ final class LauncherTest extends TestCase
             $this->buildLocalGroupConfig('test2', 'tests/SlaveFile.php'),
         ];
 
-        $master = new Launcher($this->logger);
-
-        $master->run($groupConfigs);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster($groupConfigs);
 
         $expected = [
             'info - [test2] [localhost] [tests/SlaveFile.php/2/1] Child 2 1',
@@ -152,12 +138,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->setParams(['message' => 'New Message']);
 
-        $master = new Launcher($this->logger);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig]);
 
         $expected = [
             'info - [test] [localhost] [tests/SlaveFile.php/1/1] Child clean exit',
@@ -175,13 +156,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->setParams(['sleep' => 20]);
 
-        $master = new Launcher($this->logger);
-        $master->setMaxRunningTime(10);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig], 10);
 
         $expected = [
             'info - [test] [localhost] [tests/SlaveFile.php/1/1] Child 1 1',
@@ -193,20 +168,14 @@ final class LauncherTest extends TestCase
     }
 
     /**
-     * @group local
+     * @group toto
      */
     public function testLocalTimeoutForContent(): void
     {
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->setParams(['forceSleep' => 90]);
 
-        $master = new Launcher($this->logger);
-        $master->setTimeout(5);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig], 60, 5);
 
         $expected = [
             'error - [master] Timeout waiting for content, force kill',
@@ -224,14 +193,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->setParams(['neverDie' => true]);
 
-        $master = new Launcher($this->logger);
-        $master->setMaxRunningTime(5);
-        $master->setTimeout(10);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig], 5, 10);
 
         $expected = [
             'error - [master] Timeout waiting for clean shutdown, force kill',
@@ -253,12 +215,7 @@ final class LauncherTest extends TestCase
             ->setTimeout(2)
         ;
 
-        $master = new Launcher($this->logger);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig]);
 
         $expected = [
             'error - [test] [localhost] [tests/SlaveFile.php/1/1] Timeout reached while waiting for data...',
@@ -279,8 +236,9 @@ final class LauncherTest extends TestCase
     {
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SingleLine.php');
 
+        $launcher = new Launcher(null);
         /** @var array<ProcessInterface> */
-        $children = RemoteProcess::instanciate($this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
+        $children = RemoteProcess::instanciate($launcher, null, $this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
         $this->assertCount(1, $children, 'Instanciate a single remote process');
 
         $this->assertTrue($children[0]->start(), 'Connect to 127.0.0.1');
@@ -313,12 +271,7 @@ final class LauncherTest extends TestCase
     {
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SlaveFile.php');
 
-        $master = new Launcher($this->logger);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig]);
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
@@ -339,12 +292,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->getProcessConfigs()[0]->setInstancesCount(2);
 
-        $master = new Launcher($this->logger);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig]);
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
@@ -370,12 +318,7 @@ final class LauncherTest extends TestCase
             $this->buildRemoteGroupConfig('test2', 'tests/SlaveFile.php'),
         ];
 
-        $master = new Launcher($this->logger);
-
-        $master->run($groupConfigs);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster($groupConfigs);
 
         $expected = [
             'debug - [test2] [127.0.0.1] Connected to host',
@@ -401,12 +344,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->setParams(['message' => 'New Message']);
 
-        $master = new Launcher($this->logger);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig]);
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
@@ -427,13 +365,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->setParams(['sleep' => 20]);
 
-        $master = new Launcher($this->logger);
-        $master->setMaxRunningTime(10);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig], 10);
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
@@ -458,13 +390,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->setParams(['forceSleep' => 90]);
 
-        $master = new Launcher($this->logger);
-        $master->setTimeout(5);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig], 60, 5);
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
@@ -485,14 +411,7 @@ final class LauncherTest extends TestCase
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SlaveFile.php');
         $groupConfig->setParams(['neverDie' => true]);
 
-        $master = new Launcher($this->logger);
-        $master->setMaxRunningTime(5);
-        $master->setTimeout(10);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig], 5, 10);
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
@@ -520,12 +439,7 @@ final class LauncherTest extends TestCase
             ->setTimeout(2)
         ;
 
-        $master = new Launcher($this->logger);
-
-        $master->run([$groupConfig]);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster([$groupConfig]);
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
@@ -551,12 +465,7 @@ final class LauncherTest extends TestCase
             $this->buildLocalGroupConfig('test2', 'tests/SlaveFile.php'),
         ];
 
-        $master = new Launcher($this->logger);
-
-        $master->run($groupConfigs);
-
-        $output = $this->logger->getOutput();
-        sort($output);
+        $output = $this->runMaster($groupConfigs);
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
@@ -569,6 +478,22 @@ final class LauncherTest extends TestCase
             'notice - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Ended',
         ];
         $this->assertEquals($expected, $output);
+    }
+
+    private function runMaster(array $groupConfigs, int $maxRunTime = 60, int $timeout = 300): array
+    {
+        $master = new Launcher($this->logger);
+
+        $master
+            ->setMaxRunningTime($maxRunTime)
+            ->setTimeout($timeout)
+            ->run($groupConfigs)
+        ;
+
+        $output = $this->logger->getOutput();
+        sort($output);
+
+        return $output;
     }
 
     private function buildLocalGroupConfig(string $name, string $command, $count = 1): GroupConfig

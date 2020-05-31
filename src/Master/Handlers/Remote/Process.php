@@ -3,10 +3,11 @@
 namespace giudicelli\DistributedArchitecture\Master\Handlers\Remote;
 
 use giudicelli\DistributedArchitecture\Master\ConfigInterface;
+use giudicelli\DistributedArchitecture\Master\EventsInterface;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcess;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config as ConfigLocal;
-use giudicelli\DistributedArchitecture\Master\Launcher;
+use giudicelli\DistributedArchitecture\Master\LauncherInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Slave\Handler;
 use Psr\Log\LoggerInterface;
@@ -35,9 +36,11 @@ class Process extends AbstractProcess
         int $groupCount,
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
+        LauncherInterface $launcher,
+        ?EventsInterface $events,
         LoggerInterface $logger = null
     ) {
-        parent::__construct($id, $groupId, $groupCount, $groupConfig, $config, $logger);
+        parent::__construct($id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events, $logger);
 
         if (!($config instanceof Config)) {
             throw new \InvalidArgumentException('config must be an instance of '.Config::class);
@@ -76,7 +79,7 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
-    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
+    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, ?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
     {
         $class = get_called_class();
 
@@ -91,7 +94,7 @@ class Process extends AbstractProcess
         $id = $idStart;
         $groupId = $groupIdStart;
         foreach ($config->getHosts() as $host) {
-            $children[] = new $class($host, $id, $groupId, $groupCount, $groupConfig, $config, $logger);
+            $children[] = new $class($host, $id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events, $logger);
             $id += $config->getInstancesCount();
             $groupId += $config->getInstancesCount();
         }
@@ -117,6 +120,14 @@ class Process extends AbstractProcess
     public function softStop(): void
     {
         $this->sendSignal(SIGTERM);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function isEventCompatible(): bool
+    {
+        return false;
     }
 
     /**
@@ -217,7 +228,10 @@ class Process extends AbstractProcess
         $params[Handler::PARAM_COMMAND] = $command;
         $params[Handler::PARAM_CONFIG] = $this->config;
         $params[Handler::PARAM_CONFIG_CLASS] = $this->getRemoteConfigClass();
-        $params[Handler::PARAM_LAUNCHER_CLASS] = $this->getRemoteLauncherClass();
+        $params[Handler::PARAM_LAUNCHER_CLASS] = get_class($this->getParent());
+        if ($this->events) {
+            $params[Handler::PARAM_EVENTS_CLASS] = get_class($this->events);
+        }
 
         if ($extraParams) {
             $params = array_merge($params, $extraParams);
@@ -234,16 +248,6 @@ class Process extends AbstractProcess
     protected function getRemoteConfigClass(): string
     {
         return ConfigLocal::class;
-    }
-
-    /**
-     * Return the class the Slave\Handler class will create to launch the process.
-     *
-     * @return string the class
-     */
-    protected function getRemoteLauncherClass(): string
-    {
-        return Launcher::class;
     }
 
     /**

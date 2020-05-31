@@ -32,6 +32,8 @@ interface ProcessInterface
     /**
      * Instanciate the processes.
      *
+     * @param LauncherInterface      $launcher     The parent launcher
+     * @param EventsInterface        $events       An events interface to be called upon events, can be null
      * @param LoggerInterface        $logger       The logger, can be null
      * @param GroupConfigInterface   $groupConfig  The group config
      * @param ProcessConfigInterface $config       The process config
@@ -41,7 +43,7 @@ interface ProcessInterface
      *
      * @return array<ProcessInterface> The instanciated processes
      */
-    public static function instanciate(?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array;
+    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, ?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array;
 
     /**
      * Return the number of processes that will be started using a certain config.
@@ -88,6 +90,13 @@ interface ProcessInterface
     public function read(): int;
 
     /**
+     * Get the display name for this process.
+     *
+     * @return string the display name
+     */
+    public function getDisplay(): string;
+
+    /**
      * Get the unique id of this process across all groups.
      *
      * @return int The unique id
@@ -128,4 +137,11 @@ interface ProcessInterface
      * @return int The timestamp
      */
     public function getLastSeen(): int;
+
+    /**
+     * Return the parent launcher.
+     *
+     * @return LauncherInterca The parent launcher
+     */
+    public function getParent(): LauncherInterface;
 }

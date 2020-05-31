@@ -3,6 +3,7 @@
 namespace giudicelli\DistributedArchitecture\Slave;
 
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
+use giudicelli\DistributedArchitecture\Master\EventsInterface;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\LauncherInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
@@ -24,6 +25,7 @@ class Handler implements StoppableInterface, HandlerInterface
     const PARAM_COMMAND = self::PARAM_PREFIX.'command';
     const PARAM_SIGNAL = self::PARAM_PREFIX.'signal';
     const PARAM_LAUNCHER_CLASS = self::PARAM_PREFIX.'launcherClass';
+    const PARAM_EVENTS_CLASS = self::PARAM_PREFIX.'eventsClass';
     const PARAM_CONFIG = self::PARAM_PREFIX.'config';
     const PARAM_CONFIG_CLASS = self::PARAM_PREFIX.'configClass';
 
@@ -319,6 +321,28 @@ class Handler implements StoppableInterface, HandlerInterface
     }
 
     /**
+     * Instanciate the optional EventsInterface object used by the master.
+     *
+     * @return EventsInterface the events instance
+     */
+    protected function getCommandEventsObject(): ?EventsInterface
+    {
+        if (empty($this->params[self::PARAM_EVENTS_CLASS])) {
+            return null;
+        }
+
+        $class = $this->params[self::PARAM_EVENTS_CLASS];
+
+        $reflectionClass = new \ReflectionClass($class);
+        if (!$reflectionClass->implementsInterface(EventsInterface::class)
+        || !$reflectionClass->isInstantiable()) {
+            throw new \InvalidArgumentException('Class "'.$class.'" must implement "'.EventsInterface::class.'" and be instanciable');
+        }
+
+        return new $class();
+    }
+
+    /**
      * Return a unique pid file for as process config.
      *
      * @param ProcessConfigInterface $config The process config
@@ -344,7 +368,8 @@ class Handler implements StoppableInterface, HandlerInterface
         file_put_contents($pidFile, getmypid());
 
         $masterProcess = $this->getCommandLauncherObject();
-        $masterProcess->runSingle($this->groupConfig, $config, $this->id, $this->groupId, $this->groupCount);
+        $events = $this->getCommandEventsObject();
+        $masterProcess->runSingle($this->groupConfig, $config, $this->id, $this->groupId, $this->groupCount, $events);
 
         @unlink($pidFile);
     }

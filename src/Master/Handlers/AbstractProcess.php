@@ -2,7 +2,9 @@
 
 namespace giudicelli\DistributedArchitecture\Master\Handlers;
 
+use giudicelli\DistributedArchitecture\Master\EventsInterface;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Master\LauncherInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessInterface;
 use giudicelli\DistributedArchitecture\Slave\Handler;
@@ -34,12 +36,20 @@ abstract class AbstractProcess implements ProcessInterface
     /** @var GroupConfigInterface */
     protected $groupConfig;
 
+    /** @var LauncherInterface */
+    protected $launcher;
+
+    /** @var null|EventsInterface */
+    protected $events;
+
     public function __construct(
         int $id,
         int $groupId,
         int $groupCount,
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
+        LauncherInterface $launcher,
+        ?EventsInterface $events,
         LoggerInterface $logger = null
     ) {
         if (!$groupConfig->getCommand()) {
@@ -51,6 +61,8 @@ abstract class AbstractProcess implements ProcessInterface
         $this->groupCount = $groupCount;
         $this->groupConfig = $groupConfig;
         $this->config = $config;
+        $this->launcher = $launcher;
+        $this->events = $events;
         $this->logger = $logger;
         $this->display = $this->getDisplay();
     }
@@ -68,6 +80,10 @@ abstract class AbstractProcess implements ProcessInterface
         $this->lastSeen = $this->lastSeenTimeout = time();
         $this->status = self::STATUS_RUNNING;
 
+        if ($this->isEventCompatible() && $this->events) {
+            $this->events->processStarted($this);
+        }
+
         return true;
     }
 
@@ -80,6 +96,9 @@ abstract class AbstractProcess implements ProcessInterface
         if (self::STATUS_STOPPED !== $this->status) {
             $this->status = self::STATUS_STOPPED;
             $this->logMessage('notice', 'Ended');
+            if ($this->isEventCompatible() && $this->events) {
+                $this->events->processStopped($this);
+            }
         }
     }
 
@@ -105,13 +124,15 @@ abstract class AbstractProcess implements ProcessInterface
                 $this->timeoutsCount = 0;
                 $this->lastSeen = $this->lastSeenTimeout = time();
 
+                if ($this->isEventCompatible() && $this->events) {
+                    $this->events->processWasSeen($this);
+                }
+
                 if (Handler::ENDED_MESSAGE === $line) {
                     // The child procces is exiting
-                    $this->status = self::STATUS_STOPPED;
-                    $this->logMessage('notice', 'Ended');
-
-                    return self::READ_SUCCESS;
+                    return self::READ_FAILED;
                 }
+
                 if (Handler::PING_MESSAGE === $line) {
                     return self::READ_SUCCESS;
                 }
@@ -131,12 +152,16 @@ abstract class AbstractProcess implements ProcessInterface
                     $this->lastSeenTimeout = time();
                     $this->logMessage('error', 'Timeout reached while waiting for data...');
 
+                    if ($this->isEventCompatible() && $this->events) {
+                        $this->events->processTimedout($this);
+                    }
+
                     return self::READ_TIMEOUT;
                 }
 
                 return $status;
             case self::READ_FAILED:
-                $this->stop();
+                $this->status = self::STATUS_ERROR;
 
                 return $status;
         }
@@ -191,6 +216,22 @@ abstract class AbstractProcess implements ProcessInterface
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function getParent(): LauncherInterface
+    {
+        return $this->launcher;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getDisplay(): string
+    {
+        return $this->groupConfig->getCommand().'/'.$this->id.'/'.$this->groupId;
+    }
+
+    /**
      * Do the actual start.
      *
      * @param int $signal The signal to send the process to kill it
@@ -223,6 +264,13 @@ abstract class AbstractProcess implements ProcessInterface
     abstract protected function logMessage(string $level, string $message, array $context = []): void;
 
     /**
+     * Return if the implementation should be handled with EventsInterface.
+     *
+     * @return bool true if it's compatible, else false
+     */
+    abstract protected function isEventCompatible(): bool;
+
+    /**
      * Build the mandatory parameters that need to be passed to a process.
      *
      * @return array The parameters
@@ -236,14 +284,6 @@ abstract class AbstractProcess implements ProcessInterface
             Handler::PARAM_GROUP_CONFIG => $this->groupConfig,
             Handler::PARAM_GROUP_CONFIG_CLASS => get_class($this->groupConfig),
         ];
-    }
-
-    /**
-     * Return the string to identify this process.
-     */
-    protected function getDisplay(): string
-    {
-        return $this->groupConfig->getCommand().'/'.$this->id.'/'.$this->groupId;
     }
 
     /**

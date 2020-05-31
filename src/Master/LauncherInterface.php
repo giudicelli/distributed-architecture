@@ -33,8 +33,9 @@ interface LauncherInterface
      * Run processes.
      *
      * @param array<GroupConfigInterface> $groupConfigs The configuration for each group of processes
+     * @param EventsInterface             $events       An events interface to be called upon events
      */
-    public function run(array $groupConfigs): void;
+    public function run(array $groupConfigs, EventsInterface $events = null): void;
 
     /**
      * Run a single process.
@@ -44,6 +45,7 @@ interface LauncherInterface
      * @param int                    $idStart       The current global id
      * @param int                    $groupIdStart  The current group id
      * @param int                    $groupCount    The total number of processes in this group
+     * @param EventsInterface        $events        An events interface to be called upon events
      */
-    public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount): void;
+    public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount, EventsInterface $events = null): void;
 }
