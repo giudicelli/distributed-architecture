@@ -25,6 +25,9 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
     /** @var array<ProcessConfig> */
     protected $processConfigs = [];
 
+    /**
+     * {@inheritdoc}
+     */
     public function fromArray(array $config): void
     {
         parent::fromArray($config);
@@ -40,6 +43,9 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function toArray(): array
     {
         $array = parent::toArray();
@@ -49,6 +55,9 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
         return $array;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getHash(): string
     {
         $str = parent::getHash().'-'.$this->name.'-'.$this->command;
@@ -59,6 +68,9 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
         return sha1($str);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setName(string $name): GroupConfigInterface
     {
         $this->name = $name;
@@ -66,11 +78,17 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getName(): string
     {
         return $this->name;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setParams(?array $params): GroupConfigInterface
     {
         $this->params = $params;
@@ -78,11 +96,17 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getParams(): ?array
     {
         return $this->params;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setCommand(string $command): GroupConfigInterface
     {
         $this->command = $command;
@@ -90,11 +114,17 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getCommand(): string
     {
         return $this->command;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setProcessConfigs(?array $processConfigs): GroupConfigInterface
     {
         $this->processConfigs = $processConfigs;
@@ -102,6 +132,9 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getProcessConfigs(): array
     {
         return $this->processConfigs;

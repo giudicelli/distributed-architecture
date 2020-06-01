@@ -16,6 +16,9 @@ class ProcessConfig extends AbstractConfig implements ProcessConfigInterface
     /** @var int */
     protected $instancesCount = 1;
 
+    /**
+     * {@inheritdoc}
+     */
     public function fromArray(array $config): void
     {
         parent::fromArray($config);
@@ -25,6 +28,9 @@ class ProcessConfig extends AbstractConfig implements ProcessConfigInterface
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setInstancesCount(int $instancesCount): ProcessConfigInterface
     {
         if (!$instancesCount) {
@@ -35,6 +41,9 @@ class ProcessConfig extends AbstractConfig implements ProcessConfigInterface
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getInstancesCount(): int
     {
         return $this->instancesCount;

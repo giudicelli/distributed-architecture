@@ -25,6 +25,9 @@ abstract class AbstractConfig implements ConfigInterface
     /** @var int */
     protected $timeout = -1;
 
+    /**
+     * {@inheritdoc}
+     */
     public function getHash(): string
     {
         if (empty($this->path)) {
@@ -34,6 +37,9 @@ abstract class AbstractConfig implements ConfigInterface
         return sha1($this->path);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function fromArray(array $config): void
     {
         if (!empty($config['binPath'])) {
@@ -50,18 +56,24 @@ abstract class AbstractConfig implements ConfigInterface
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function toArray(): array
     {
         return get_object_vars($this);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function jsonSerialize(): array
     {
         return $this->toArray();
     }
 
     /**
-     * Set the cwd of the command, to be set only if it differs from the master process'.
+     * {@inheritdoc}
      */
     public function setPath(?string $path): ConfigInterface
     {
@@ -71,7 +83,7 @@ abstract class AbstractConfig implements ConfigInterface
     }
 
     /**
-     * Returns the cwd of the command.
+     * {@inheritdoc}
      */
     public function getPath(): ?string
     {
@@ -79,7 +91,7 @@ abstract class AbstractConfig implements ConfigInterface
     }
 
     /**
-     * Set the path of the binary, to be set only if it differs from the master process'.
+     * {@inheritdoc}
      */
     public function setBinPath(?string $binPath): ConfigInterface
     {
@@ -89,7 +101,7 @@ abstract class AbstractConfig implements ConfigInterface
     }
 
     /**
-     * Returns the path of the binary.
+     * {@inheritdoc}
      */
     public function getBinPath(): ?string
     {
@@ -97,7 +109,7 @@ abstract class AbstractConfig implements ConfigInterface
     }
 
     /**
-     * Set the process' priority (range from -19, to 19).
+     * {@inheritdoc}
      */
     public function setPriority(?int $priority): ConfigInterface
     {
@@ -107,7 +119,7 @@ abstract class AbstractConfig implements ConfigInterface
     }
 
     /**
-     * Returns the process' priority.
+     * {@inheritdoc}
      */
     public function getPriority(): ?int
     {
@@ -115,7 +127,7 @@ abstract class AbstractConfig implements ConfigInterface
     }
 
     /**
-     * Set the process' timeout. A process is considered timeouted when we haven't received any data from it during a timeout period of time.
+     * {@inheritdoc}
      */
     public function setTimeout(?int $timeout): ConfigInterface
     {
@@ -125,7 +137,7 @@ abstract class AbstractConfig implements ConfigInterface
     }
 
     /**
-     * Returns the process' timeout.
+     * {@inheritdoc}
      */
     public function getTimeout(): ?int
     {

@@ -37,8 +37,8 @@ class Process extends AbstractProcess
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
         LauncherInterface $launcher,
-        ?EventsInterface $events,
-        LoggerInterface $logger = null
+        ?EventsInterface $events = null,
+        ?LoggerInterface $logger = null
     ) {
         parent::__construct($id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events, $logger);
 

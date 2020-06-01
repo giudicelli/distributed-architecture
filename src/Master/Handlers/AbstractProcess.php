@@ -49,8 +49,8 @@ abstract class AbstractProcess implements ProcessInterface
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
         LauncherInterface $launcher,
-        ?EventsInterface $events,
-        LoggerInterface $logger = null
+        ?EventsInterface $events = null,
+        ?LoggerInterface $logger = null
     ) {
         if (!$groupConfig->getCommand()) {
             throw new \InvalidArgumentException('Missing command for: '.json_encode($groupConfig));

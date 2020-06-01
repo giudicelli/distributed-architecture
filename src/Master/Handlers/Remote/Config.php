@@ -18,6 +18,9 @@ class Config extends ProcessConfig
 
     protected $privateKey;
 
+    /**
+     * {@inheritdoc}
+     */
     public function fromArray(array $config): void
     {
         parent::fromArray($config);
@@ -33,6 +36,11 @@ class Config extends ProcessConfig
         }
     }
 
+    /**
+     * Set the hosts to launch the process on.
+     *
+     * @param array $hosts the list of hosts
+     */
     public function setHosts(array $hosts): self
     {
         if (empty($hosts)) {
@@ -43,6 +51,9 @@ class Config extends ProcessConfig
         return $this;
     }
 
+    /**
+     * Get the the list of hosts to launch the process on.
+     */
     public function getHosts(): array
     {
         return $this->hosts;
@@ -67,7 +78,7 @@ class Config extends ProcessConfig
     }
 
     /**
-     * Set the user private key to connect with.
+     * Set the user private key file to connect with.
      */
     public function setPrivateKey(?string $privateKey): self
     {
@@ -77,7 +88,7 @@ class Config extends ProcessConfig
     }
 
     /**
-     * Returns the private key to connect with.
+     * Returns the private key file to connect with.
      */
     public function getPrivateKey(): ?string
     {
