@@ -249,8 +249,6 @@ abstract class AbstractProcess implements ProcessInterface
 
     /**
      * Do the actual start.
-     *
-     * @param int $signal The signal to send the process to kill it
      */
     abstract protected function run(): bool;
 
