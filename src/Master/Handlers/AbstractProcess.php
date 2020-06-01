@@ -125,7 +125,7 @@ abstract class AbstractProcess implements ProcessInterface
                 $this->lastSeen = $this->lastSeenTimeout = time();
 
                 if ($this->isEventCompatible() && $this->events) {
-                    $this->events->processWasSeen($this);
+                    $this->events->processWasSeen($this, $line);
                 }
 
                 if (Handler::ENDED_MESSAGE === $line) {
@@ -229,6 +229,22 @@ abstract class AbstractProcess implements ProcessInterface
     public function getDisplay(): string
     {
         return $this->groupConfig->getCommand().'/'.$this->id.'/'.$this->groupId;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getGroupConfig(): GroupConfigInterface
+    {
+        return $this->groupConfig;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getHost(): string
+    {
+        return $this->host;
     }
 
     /**

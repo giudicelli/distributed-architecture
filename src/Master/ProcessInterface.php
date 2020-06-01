@@ -144,4 +144,18 @@ interface ProcessInterface
      * @return LauncherInterca The parent launcher
      */
     public function getParent(): LauncherInterface;
+
+    /**
+     * Return the group config.
+     *
+     * @return GroupConfigInterface The group config
+     */
+    public function getGroupConfig(): GroupConfigInterface;
+
+    /**
+     * Return the host.
+     *
+     * @return string The host
+     */
+    public function getHost(): string;
 }

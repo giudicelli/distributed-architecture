@@ -57,6 +57,7 @@ interface EventsInterface
      * Called when a process returned data and is well alive.
      *
      * @param ProcessInterface $process The process
+     * @param string           $line    Last line sent by the process
      */
-    public function processWasSeen(ProcessInterface $process): void;
+    public function processWasSeen(ProcessInterface $process, string $line): void;
 }
