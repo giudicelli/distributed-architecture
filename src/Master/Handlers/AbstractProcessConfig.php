@@ -11,7 +11,7 @@ use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
  *
  * @internal
  */
-class ProcessConfig extends AbstractConfig implements ProcessConfigInterface
+abstract class AbstractProcessConfig extends AbstractConfig implements ProcessConfigInterface
 {
     /** @var int */
     protected $instancesCount = 1;

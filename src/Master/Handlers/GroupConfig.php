@@ -8,8 +8,6 @@ use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
  * The group config.
  *
  * @author Frédéric Giudicelli
- *
- * @internal
  */
 class GroupConfig extends AbstractConfig implements GroupConfigInterface
 {
@@ -135,7 +133,7 @@ class GroupConfig extends AbstractConfig implements GroupConfigInterface
     /**
      * {@inheritdoc}
      */
-    public function getProcessConfigs(): array
+    public function getProcessConfigs(): ?array
     {
         return $this->processConfigs;
     }

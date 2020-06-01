@@ -6,8 +6,6 @@ namespace giudicelli\DistributedArchitecture\Master;
  * The general group config interface.
  *
  * @author Frédéric Giudicelli
- *
- * @internal
  */
 interface GroupConfigInterface extends ConfigInterface
 {
@@ -34,7 +32,7 @@ interface GroupConfigInterface extends ConfigInterface
     /**
      * Set the list of process configs.
      *
-     * @param array<ProcessConfigInterface> $processes
+     * @param null|array<ProcessConfigInterface> $processes
      */
     public function setProcessConfigs(?array $processConfigs): GroupConfigInterface;
 
@@ -43,7 +41,7 @@ interface GroupConfigInterface extends ConfigInterface
      *
      * @return array<ProcessConfigInterface>
      */
-    public function getProcessConfigs(): array;
+    public function getProcessConfigs(): ?array;
 
     /**
      * Sets the params to be passed to the processes.

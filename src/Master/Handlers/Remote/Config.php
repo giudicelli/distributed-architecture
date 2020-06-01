@@ -2,14 +2,14 @@
 
 namespace giudicelli\DistributedArchitecture\Master\Handlers\Remote;
 
-use giudicelli\DistributedArchitecture\Master\Handlers\ProcessConfig;
+use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcessConfig;
 
 /**
  * The config to start a remote process.
  *
  * @author Frédéric Giudicelli
  */
-class Config extends ProcessConfig
+class Config extends AbstractProcessConfig
 {
     /** @var array<string> */
     protected $hosts;

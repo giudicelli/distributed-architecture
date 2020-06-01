@@ -6,8 +6,6 @@ namespace giudicelli\DistributedArchitecture\Master;
  * The general config interface to start a process.
  *
  * @author Frédéric Giudicelli
- *
- * @internal
  */
 interface ProcessConfigInterface extends ConfigInterface
 {

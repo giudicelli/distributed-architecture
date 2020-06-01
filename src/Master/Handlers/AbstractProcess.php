@@ -11,7 +11,7 @@ use giudicelli\DistributedArchitecture\Slave\Handler;
 use Psr\Log\LoggerInterface;
 
 /**
- * The general model for a process.
+ * The general implementation for a process.
  *
  * @author Frédéric Giudicelli
  *

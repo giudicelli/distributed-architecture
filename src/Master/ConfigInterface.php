@@ -6,8 +6,6 @@ namespace giudicelli\DistributedArchitecture\Master;
  * The general config interface.
  *
  * @author Frédéric Giudicelli
- *
- * @internal
  */
 interface ConfigInterface extends \JsonSerializable
 {

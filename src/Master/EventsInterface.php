@@ -6,8 +6,6 @@ namespace giudicelli\DistributedArchitecture\Master;
  * This interface defines the possible events associated with a LauncherInterface.
  *
  * @author Frédéric Giudicelli
- *
- * @internal
  */
 interface EventsInterface
 {

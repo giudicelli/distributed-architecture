@@ -8,8 +8,6 @@ use Psr\Log\LoggerInterface;
  * The general interface for a started process.
  *
  * @author Frédéric Giudicelli
- *
- * @internal
  */
 interface ProcessInterface
 {
