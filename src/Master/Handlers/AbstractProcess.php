@@ -19,7 +19,6 @@ use Psr\Log\LoggerInterface;
  */
 abstract class AbstractProcess implements ProcessInterface
 {
-    protected $display = '';
     protected $status = self::STATUS_STOPPED;
     protected $lastSeen = 0;
     protected $lastSeenTimeout = 0;
@@ -43,14 +42,14 @@ abstract class AbstractProcess implements ProcessInterface
     protected $events;
 
     public function __construct(
+        LoggerInterface $logger,
         int $id,
         int $groupId,
         int $groupCount,
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
         LauncherInterface $launcher,
-        ?EventsInterface $events = null,
-        ?LoggerInterface $logger = null
+        ?EventsInterface $events = null
     ) {
         if (!$groupConfig->getCommand()) {
             throw new \InvalidArgumentException('Missing command for: '.json_encode($groupConfig));
@@ -64,7 +63,6 @@ abstract class AbstractProcess implements ProcessInterface
         $this->launcher = $launcher;
         $this->events = $events;
         $this->logger = $logger;
-        $this->display = $this->getDisplay();
     }
 
     /**
@@ -137,12 +135,7 @@ abstract class AbstractProcess implements ProcessInterface
                     return self::READ_SUCCESS;
                 }
 
-                $matches = [];
-                if (preg_match('/^[{]level:([a-z]+)[}]/', $line, $matches)) {
-                    $this->logMessage($matches[1], substr($line, strlen($matches[0])));
-                } else {
-                    $this->logMessage('info', $line);
-                }
+                $this->logMessage('info', $line);
 
                 return $status;
             case self::READ_EMPTY:
@@ -269,20 +262,26 @@ abstract class AbstractProcess implements ProcessInterface
     abstract protected function readLine(string &$line): int;
 
     /**
+     * Return if the implementation should be handled with EventsInterface.
+     *
+     * @return bool true if it's compatible, else false
+     */
+    abstract protected function isEventCompatible(): bool;
+
+    /**
      * Log one message.
      *
      * @param string  $level   The level of the log (emergency, alert, critical, error, warning, notice, info, debug)
      * @param string  $message The message to log
      * @param mixed[] $context The context of the message
      */
-    abstract protected function logMessage(string $level, string $message, array $context = []): void;
-
-    /**
-     * Return if the implementation should be handled with EventsInterface.
-     *
-     * @return bool true if it's compatible, else false
-     */
-    abstract protected function isEventCompatible(): bool;
+    protected function logMessage(string $level, string $message, array $context = []): void
+    {
+        $context['display'] = $this->getDisplay();
+        $context['host'] = $this->getHost();
+        $context['group'] = $this->getGroupConfig()->getName();
+        $this->logger->log($level, $message, $context);
+    }
 
     /**
      * Build the mandatory parameters that need to be passed to a process.

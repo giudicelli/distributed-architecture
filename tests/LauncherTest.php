@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace giudicelli\DistributedArchitecture\tests;
 
+use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
 use giudicelli\DistributedArchitecture\Master\Handlers\GroupConfig;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config as LocalConfig;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Process as LocalProcess;
@@ -43,9 +44,11 @@ final class LauncherTest extends TestCase
     {
         $groupConfig = $this->buildLocalGroupConfig('test', 'tests/SingleLine.php');
 
-        $launcher = new Launcher(null);
+        $logger = new InterProcessLogger(true, $this->logger);
+
+        $launcher = new Launcher(true);
         /** @var array<ProcessInterface> */
-        $children = LocalProcess::instanciate($launcher, null, $this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
+        $children = LocalProcess::instanciate($launcher, null, $logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
         $this->assertCount(1, $children, 'Instanciate a single local process');
 
         $this->assertTrue($children[0]->start(), 'Start process');
@@ -63,7 +66,7 @@ final class LauncherTest extends TestCase
         sort($output);
 
         $expected = [
-            'info - [test] [localhost] [tests/SingleLine.php/1/1] ONE_LINE',
+            'emergency - [test] [localhost] [tests/SingleLine.php/1/1] ONE_LINE',
             'notice - [test] [localhost] [tests/SingleLine.php/1/1] Ended',
         ];
         $this->assertEquals($expected, $output);
@@ -168,7 +171,7 @@ final class LauncherTest extends TestCase
     }
 
     /**
-     * @group toto
+     * @group local
      */
     public function testLocalTimeoutForContent(): void
     {
@@ -236,15 +239,21 @@ final class LauncherTest extends TestCase
     {
         $groupConfig = $this->buildRemoteGroupConfig('test', 'tests/SingleLine.php');
 
-        $launcher = new Launcher(null);
+        $logger = new InterProcessLogger(true, $this->logger);
+
+        $launcher = new Launcher(true, null);
         /** @var array<ProcessInterface> */
-        $children = RemoteProcess::instanciate($launcher, null, $this->logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
+        $children = RemoteProcess::instanciate($launcher, null, $logger, $groupConfig, $groupConfig->getProcessConfigs()[0], 1, 1, 1);
         $this->assertCount(1, $children, 'Instanciate a single remote process');
 
         $this->assertTrue($children[0]->start(), 'Connect to 127.0.0.1');
 
         sleep(1);
 
+        // ONE_LINE
+        $this->assertEquals(ProcessInterface::READ_SUCCESS, $children[0]->read(), 'RemoteProcess::read returns READ_SUCCESS');
+
+        // Ended
         $this->assertEquals(ProcessInterface::READ_SUCCESS, $children[0]->read(), 'RemoteProcess::read returns READ_SUCCESS');
 
         sleep(1);
@@ -257,8 +266,9 @@ final class LauncherTest extends TestCase
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
-            'info - [test] [127.0.0.1] ONE_LINE',
+            'emergency - [test] [127.0.0.1] [tests/SingleLine.php/1/1] ONE_LINE',
             'notice - [test] [127.0.0.1] Ended',
+            'notice - [test] [127.0.0.1] [tests/SingleLine.php/1/1] Ended',
         ];
         $this->assertEquals($expected, $output);
     }
@@ -482,7 +492,7 @@ final class LauncherTest extends TestCase
 
     private function runMaster(array $groupConfigs, int $maxRunTime = 60, int $timeout = 300): array
     {
-        $master = new Launcher($this->logger);
+        $master = new Launcher(true, $this->logger);
 
         $master
             ->setMaxRunningTime($maxRunTime)

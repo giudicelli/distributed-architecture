@@ -2,6 +2,7 @@
 
 namespace giudicelli\DistributedArchitecture\Slave;
 
+use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
 use giudicelli\DistributedArchitecture\Master\EventsInterface;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
@@ -166,7 +167,7 @@ class Handler implements StoppableInterface, HandlerInterface
 
             pcntl_signal(SIGTERM, [&$this, 'signalHandler']);
 
-            call_user_func($processCallback, $this);
+            call_user_func($processCallback, $this, new InterProcessLogger(false));
             $this->sendEnded();
         }
     }
@@ -317,7 +318,7 @@ class Handler implements StoppableInterface, HandlerInterface
             throw new \InvalidArgumentException('Class "'.$class.'" must implement "'.LauncherInterface::class.'" and be instanciable');
         }
 
-        return new $class();
+        return new $class(false);
     }
 
     /**

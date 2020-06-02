@@ -32,7 +32,7 @@ interface ProcessInterface
      *
      * @param LauncherInterface      $launcher     The parent launcher
      * @param EventsInterface        $events       An events interface to be called upon events, can be null
-     * @param LoggerInterface        $logger       The logger, can be null
+     * @param LoggerInterface        $logger       The logger
      * @param GroupConfigInterface   $groupConfig  The group config
      * @param ProcessConfigInterface $config       The process config
      * @param int                    $idStart      The current global id
@@ -41,7 +41,7 @@ interface ProcessInterface
      *
      * @return array<ProcessInterface> The instanciated processes
      */
-    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, ?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array;
+    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array;
 
     /**
      * Return the number of processes that will be started using a certain config.

@@ -2,6 +2,7 @@
 
 namespace giudicelli\DistributedArchitecture\Master;
 
+use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Process as ProcessLocal;
 use giudicelli\DistributedArchitecture\Master\Handlers\Remote\Process as ProcessRemote;
 use Psr\Log\LoggerInterface;
@@ -30,10 +31,14 @@ class Launcher implements LauncherInterface
 
     protected $mappingConfigProcess;
 
+    /**
+     * @param bool $local true when this instance is the main master, false when it's a remote launcher
+     */
     public function __construct(
-        LoggerInterface $logger = null
+        bool $local,
+        ?LoggerInterface $logger = null
     ) {
-        $this->logger = $logger;
+        $this->logger = new InterProcessLogger($local, $logger);
 
         $this->loadReflectionData();
 
@@ -393,14 +398,6 @@ class Launcher implements LauncherInterface
 
     protected function logMessage(string $level, string $message, array $context = []): void
     {
-        if ($this->logger) {
-            $this->logger->{$level}('[master] '.$message, $context);
-        } else {
-            foreach ($context as $key => $value) {
-                $message = str_replace('{'.$key.'}', $value, $message);
-            }
-            echo "{level:{$level}}[master] {$message}\n";
-            flush();
-        }
+        $this->logger->log($level, $message, array_merge($context, ['display' => 'master']));
     }
 }

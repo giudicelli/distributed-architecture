@@ -5,6 +5,7 @@ namespace giudicelli\DistributedArchitecture\tests;
 include 'vendor/autoload.php';
 
 use giudicelli\DistributedArchitecture\Slave\Handler;
+use Psr\Log\LoggerInterface;
 
 if (empty($_SERVER['argv'][1])) {
     echo "Empty params\n";
@@ -12,7 +13,7 @@ if (empty($_SERVER['argv'][1])) {
 }
 
 $handler = new Handler($_SERVER['argv'][1]);
-$handler->run(function (Handler $handler) {
+$handler->run(function (Handler $handler, LoggerInterface $logger) {
     $groupConfig = $handler->getGroupConfig();
 
     $params = $groupConfig->getParams();

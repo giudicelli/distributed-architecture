@@ -35,7 +35,7 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
-    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, ?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
+    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
     {
         $class = get_called_class();
 
@@ -50,7 +50,7 @@ class Process extends AbstractProcess
 
         $children = [];
         for ($i = 0, $id = $idStart, $groupId = $groupIdStart; $i < $config->getInstancesCount(); ++$i, ++$id, ++$groupId) {
-            $children[] = new $class($id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events, $logger);
+            $children[] = new $class($logger, $id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events);
         }
 
         return $children;
@@ -196,26 +196,6 @@ class Process extends AbstractProcess
         }
 
         $this->pid = 0;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function logMessage(string $level, string $message, array $context = []): void
-    {
-        if ($this->logger) {
-            $this->logger->{$level}('[{group}] [{host}] [{display}] '.$message, array_merge([
-                'group' => $this->groupConfig->getName(),
-                'host' => $this->host,
-                'display' => $this->display,
-            ], $context));
-        } else {
-            foreach ($context as $key => $value) {
-                $message = str_replace('{'.$key.'}', $value, $message);
-            }
-            echo "{level:{$level}}[{$this->display}] {$message}\n";
-            flush();
-        }
     }
 
     /**

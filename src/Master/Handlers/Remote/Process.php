@@ -30,6 +30,7 @@ class Process extends AbstractProcess
     protected $stream;
 
     public function __construct(
+        LoggerInterface $logger,
         string $host,
         int $id,
         int $groupId,
@@ -37,10 +38,9 @@ class Process extends AbstractProcess
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
         LauncherInterface $launcher,
-        ?EventsInterface $events = null,
-        ?LoggerInterface $logger = null
+        ?EventsInterface $events = null
     ) {
-        parent::__construct($id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events, $logger);
+        parent::__construct($logger, $id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events);
 
         if (!($config instanceof Config)) {
             throw new \InvalidArgumentException('config must be an instance of '.Config::class);
@@ -79,7 +79,7 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
-    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, ?LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
+    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
     {
         $class = get_called_class();
 
@@ -94,7 +94,7 @@ class Process extends AbstractProcess
         $id = $idStart;
         $groupId = $groupIdStart;
         foreach ($config->getHosts() as $host) {
-            $children[] = new $class($host, $id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events, $logger);
+            $children[] = new $class($logger, $host, $id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events);
             $id += $config->getInstancesCount();
             $groupId += $config->getInstancesCount();
         }
@@ -184,25 +184,6 @@ class Process extends AbstractProcess
         if (!empty($this->connection)) {
             @ssh2_disconnect($this->connection);
             $this->connection = null;
-        }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function logMessage(string $level, string $message, array $context = []): void
-    {
-        if ($this->logger) {
-            $this->logger->{$level}('[{group}] [{host}] '.$message, array_merge([
-                'group' => $this->groupConfig->getName(),
-                'host' => $this->host,
-            ], $context));
-        } else {
-            foreach ($context as $key => $value) {
-                $message = str_replace('{'.$key.'}', $value, $message);
-            }
-            echo "{level:{$level}}{$message}\n";
-            flush();
         }
     }
 
@@ -355,6 +336,19 @@ class Process extends AbstractProcess
             'connection' => $connection,
             'stream' => $stream,
         ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function logMessage(string $level, string $message, array $context = []): void
+    {
+        // We don't set display in context, if we're logging our real message
+        // we don't want it, and if we're logging a message from a sub process
+        // it will set it
+        $context['host'] = $this->getHost();
+        $context['group'] = $this->getGroupConfig()->getName();
+        $this->logger->log($level, $message, $context);
     }
 
     /**

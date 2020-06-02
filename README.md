@@ -97,10 +97,14 @@ if (empty($_SERVER['argv'][1])) {
 }
 
 $handler = new Handler($_SERVER['argv'][1]);
-$handler->run(function (Handler $handler) {
+$handler->run(function (Handler $handler, LoggerInterface $logger) {
     $groupConfig = $handler->getGroupConfig();
 
     $params = $groupConfig->getParams();
+
+    // Anything echoed here will be considered log level "info" by the master process.
+    // If you want another level for certain messages, use $logger.
+    // echo "Hello world!\n" is the same as $logger->info('Hello world!')
 
     echo "My ID : ".$handler->getId()."\n";
     echo "My Group ID : ".$handler->getGroupId()."\n";
