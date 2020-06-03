@@ -90,6 +90,7 @@ A slave process must use the "Slave\Handler" class, as the master may be sending
 
 ```php
 use giudicelli\DistributedArchitecture\Slave\Handler;
+use Psr\Log\LoggerInterface;
 
 if (empty($_SERVER['argv'][1])) {
     echo "Empty params\n";
