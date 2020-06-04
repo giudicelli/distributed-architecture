@@ -15,6 +15,8 @@ use giudicelli\DistributedArchitecture\Master\ProcessInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 
+require_once 'tests/TestEventsHandler.php';
+
 /**
  * @internal
  * @coversNothing
@@ -486,6 +488,44 @@ final class LauncherTest extends TestCase
             'notice - [test2] [localhost] [tests/SlaveFile.php/2/1] Ended',
             'notice - [test] [127.0.0.1] Ended',
             'notice - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Ended',
+        ];
+        $this->assertEquals($expected, $output);
+    }
+
+    /**
+     * @group neverexit
+     */
+    public function testNeverExit(): void
+    {
+        $groupConfigs = [
+            $this->buildLocalGroupConfig('test1', 'tests/SlaveFile.php'),
+            $this->buildLocalGroupConfig('test2', 'tests/SlaveFile.php'),
+        ];
+        $groupConfigs[0]->setParams(['sleep' => 2000]);
+        $groupConfigs[1]->setParams(['sleep' => 2000]);
+
+        $events = new TestEventsHandler();
+
+        $master = new Launcher(true, $this->logger);
+
+        $master
+            ->run($groupConfigs, $events, true)
+        ;
+
+        $output = $this->logger->getOutput();
+        sort($output);
+
+        $expected = [
+            'info - [test1] [localhost] [tests/SlaveFile.php/1/1] Child 1 1',
+            'info - [test1] [localhost] [tests/SlaveFile.php/1/1] Child 1 1',
+            'info - [test1] [localhost] [tests/SlaveFile.php/1/1] Child clean exit',
+            'info - [test1] [localhost] [tests/SlaveFile.php/1/1] Child clean exit',
+            'info - [test2] [localhost] [tests/SlaveFile.php/2/1] Child 2 1',
+            'info - [test2] [localhost] [tests/SlaveFile.php/2/1] Child clean exit',
+            'notice - [master] Stopping...',
+            'notice - [test1] [localhost] [tests/SlaveFile.php/1/1] Ended',
+            'notice - [test1] [localhost] [tests/SlaveFile.php/1/1] Ended',
+            'notice - [test2] [localhost] [tests/SlaveFile.php/2/1] Ended',
         ];
         $this->assertEquals($expected, $output);
     }
