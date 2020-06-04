@@ -79,7 +79,7 @@ abstract class AbstractProcess implements ProcessInterface
         $this->status = self::STATUS_RUNNING;
 
         if ($this->isEventCompatible() && $this->events) {
-            $this->events->processStarted($this);
+            $this->events->processStarted($this, $this->logger);
         }
 
         return true;
@@ -95,7 +95,7 @@ abstract class AbstractProcess implements ProcessInterface
             $this->status = self::STATUS_STOPPED;
             $this->logMessage('notice', 'Ended');
             if ($this->isEventCompatible() && $this->events) {
-                $this->events->processStopped($this);
+                $this->events->processStopped($this, $this->logger);
             }
         }
     }
@@ -123,7 +123,7 @@ abstract class AbstractProcess implements ProcessInterface
                 $this->lastSeen = $this->lastSeenTimeout = time();
 
                 if ($this->isEventCompatible() && $this->events) {
-                    $this->events->processWasSeen($this, $line);
+                    $this->events->processWasSeen($this, $line, $this->logger);
                 }
 
                 if (Handler::ENDED_MESSAGE === $line) {
@@ -146,7 +146,7 @@ abstract class AbstractProcess implements ProcessInterface
                     $this->logMessage('error', 'Timeout reached while waiting for data...');
 
                     if ($this->isEventCompatible() && $this->events) {
-                        $this->events->processTimedout($this);
+                        $this->events->processTimedout($this, $this->logger);
                     }
 
                     return self::READ_TIMEOUT;

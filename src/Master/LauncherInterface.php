@@ -10,11 +10,6 @@ namespace giudicelli\DistributedArchitecture\Master;
 interface LauncherInterface
 {
     /**
-     * Stop.
-     */
-    public function stop(): void;
-
-    /**
      * Set the general timeout.
      */
     public function setTimeout(?int $timeout): self;
@@ -34,8 +29,9 @@ interface LauncherInterface
      *
      * @param array<GroupConfigInterface> $groupConfigs The configuration for each group of processes
      * @param EventsInterface             $events       An events interface to be called upon events
+     * @param bool                        $neverExit    When set to true run will never exit upon the end of all processes, unless stop() is called. To start processes again you will need to call startGroup or startAll.
      */
-    public function run(array $groupConfigs, EventsInterface $events = null): void;
+    public function run(array $groupConfigs, EventsInterface $events = null, bool $neverExit = false): void;
 
     /**
      * Run a single process.
@@ -48,4 +44,46 @@ interface LauncherInterface
      * @param EventsInterface        $events        An events interface to be called upon events
      */
     public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount, EventsInterface $events = null): void;
+
+    /**
+     * Stop all processes. Even if $neverExit was set to true when run() was called.
+     */
+    public function stop(): void;
+
+    /**
+     * Are there any process currently running?
+     */
+    public function isRunning(): bool;
+
+    /**
+     * Is the instance the master or a remote launcher?
+     */
+    public function isMaster(): bool;
+
+    /**
+     * Start all processes in certain group. If some of the processes are already running they will be ignored. It needs to be used in conjonction with $neverExit = true on run();.
+     *
+     * @param string $groupName The name of the group
+     */
+    public function runGroup(string $groupName): void;
+
+    /**
+     * Stop all processes in certain group. It needs to be used in conjonction with $neverExit = true on run();.
+     *
+     * @param string $groupName The name of the group
+     * @param bool   $force     Set to true to force kill the processes
+     */
+    public function stopGroup(string $groupName, bool $force = false): void;
+
+    /**
+     * Start all processes. If some of the processes are already running they will be ignored. It needs to be used in conjonction with $neverExit = true on run();.
+     */
+    public function runAll(): void;
+
+    /**
+     * Stop all processes. If some of the processes are already running they will be ignored. It needs to be used in conjonction with $neverExit = true on run();.
+     *
+     * @param bool $force Set to true to force kill the processes
+     */
+    public function stopAll(bool $force = false): void;
 }

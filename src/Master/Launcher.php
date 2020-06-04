@@ -31,14 +31,17 @@ class Launcher implements LauncherInterface
 
     protected $mappingConfigProcess;
 
+    protected $isMaster;
+
     /**
-     * @param bool $local true when this instance is the main master, false when it's a remote launcher
+     * @param bool $isMaster true when this instance is the main master, false when it's a remote launcher
      */
     public function __construct(
-        bool $local,
+        bool $isMaster,
         ?LoggerInterface $logger = null
     ) {
-        $this->logger = new InterProcessLogger($local, $logger);
+        $this->isMaster = $isMaster;
+        $this->logger = new InterProcessLogger($isMaster, $logger);
 
         $this->loadReflectionData();
 
@@ -90,7 +93,7 @@ class Launcher implements LauncherInterface
     /**
      * {@inheritdoc}
      */
-    public function run(array $groupConfigs, ?EventsInterface $events = null): void
+    public function run(array $groupConfigs, ?EventsInterface $events = null, bool $neverExit = false): void
     {
         // First count the total number of processes
         // that will be launched in each group
@@ -109,18 +112,116 @@ class Launcher implements LauncherInterface
         }
 
         if ($events) {
-            $events->started($this);
+            $events->started($this, $this->logger);
         }
 
-        $this->startedTime = time();
-
-        $this->handleChildren($events);
-
-        if ($events) {
-            $events->stopped($this);
+        if (!$neverExit) {
+            $this->startedTime = time();
+            $this->handleChildren($events);
+        } else {
+            while (!$this->mustStop) {
+                $this->startedTime = time();
+                $this->handleChildren($events);
+                sleep(2);
+                if ($events) {
+                    $events->check($this, $this->logger);
+                }
+            }
         }
 
         $this->reset();
+
+        if ($events) {
+            $events->stopped($this, $this->logger);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function isRunning(): bool
+    {
+        foreach ($this->children as $child) {
+            if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function isMaster(): bool
+    {
+        return $this->isMaster;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function runGroup(string $groupName): void
+    {
+        foreach ($this->children as $child) {
+            if ($child->getGroupConfig()->getName() !== $groupName) {
+                continue;
+            }
+            if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
+                continue;
+            }
+            $child->start();
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function runAll(): void
+    {
+        foreach ($this->children as $child) {
+            if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
+                continue;
+            }
+            $child->start();
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function stopAll(bool $force = false): void
+    {
+        foreach ($this->children as $child) {
+            if (ProcessInterface::STATUS_RUNNING !== $child->getStatus()) {
+                continue;
+            }
+            if ($force) {
+                $child->stop(SIGKILL);
+            } else {
+                $child->softStop();
+            }
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function stopGroup(string $groupName, bool $force = false): void
+    {
+        foreach ($this->children as $child) {
+            if ($child->getGroupConfig()->getName() !== $groupName) {
+                continue;
+            }
+            if (ProcessInterface::STATUS_RUNNING !== $child->getStatus()) {
+                continue;
+            }
+            if ($force) {
+                $child->stop(SIGKILL);
+            } else {
+                $child->softStop();
+            }
+        }
     }
 
     /**
@@ -203,7 +304,7 @@ class Launcher implements LauncherInterface
      * @param int                  $idStart      The current value of the global id
      * @param int                  $groupIdStart The current value of the group id
      * @param int                  $groupCount   The total number of processes in the group
-     * @param EventsInterface      $events       An events interface to be called upon events
+     * @param null|EventsInterface $events       An events interface to be called upon events
      *
      * @return int the number of started processes
      */
@@ -229,7 +330,7 @@ class Launcher implements LauncherInterface
      * @param int                    $idStart       The current value of the global id
      * @param int                    $groupIdStart  The current value of the group id
      * @param int                    $groupCount    The total number of processes in the group
-     * @param EventsInterface        $events        An events interface to be called upon events
+     * @param null|EventsInterface   $events        An events interface to be called upon events
      *
      * @return int the number of started processes
      */
@@ -238,9 +339,8 @@ class Launcher implements LauncherInterface
         $processClass = $this->getConfigProcess($processConfig);
         $children = call_user_func([$processClass, 'instanciate'], $this, $events, $this->logger, $groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount);
         foreach ($children as $child) {
-            if ($child->start()) {
-                $this->children[$child->getId()] = $child;
-            }
+            $child->start();
+            $this->children[$child->getId()] = $child;
         }
 
         return call_user_func([$processClass, 'willStartCount'], $processConfig);
@@ -272,7 +372,7 @@ class Launcher implements LauncherInterface
         $stopping = false;
         $stopStartTime = 0;
 
-        while (count($this->children)) {
+        while ($this->isRunning()) {
             if ($this->readChildren(0 !== $stopStartTime)) {
                 $lastContent = time();
                 if ($stopping) {
@@ -288,7 +388,7 @@ class Launcher implements LauncherInterface
             }
 
             if ($events) {
-                $events->check($this);
+                $events->check($this, $this->logger);
             }
 
             if (!$stopStartTime) {
@@ -302,7 +402,9 @@ class Launcher implements LauncherInterface
 
                     // Request a soft stop
                     foreach ($this->children as $child) {
-                        $child->softStop();
+                        if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
+                            $child->softStop();
+                        }
                     }
                 } elseif ($this->maxRunningTime && (time() - $this->startedTime) > $this->maxRunningTime) {
                     // Did we reach the maximum running time?
@@ -323,12 +425,11 @@ class Launcher implements LauncherInterface
             }
         }
 
-        if (!empty($this->children)) {
-            // There are some remaining children.
-            // We need to force kill them
-            sleep(5);
-            foreach ($this->children as $id => $child) {
-                $this->stopChild($id, SIGKILL);
+        // If there there are some remaining children.
+        // We need to force kill them
+        foreach ($this->children as $child) {
+            if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
+                $child->stop(SIGKILL);
             }
         }
     }
@@ -339,7 +440,12 @@ class Launcher implements LauncherInterface
     protected function readChildren(bool $stopping): bool
     {
         $gotContent = false;
-        foreach ($this->children as $id => $child) {
+        foreach ($this->children as $child) {
+            // We only care about running children
+            if (ProcessInterface::STATUS_RUNNING !== $child->getStatus()) {
+                continue;
+            }
+
             // Read content from process
             switch ($child->read()) {
                 case ProcessInterface::READ_SUCCESS:
@@ -348,43 +454,29 @@ class Launcher implements LauncherInterface
                     break;
                 case ProcessInterface::READ_TIMEOUT:
                     if (($this->maxProcessTimeout && $child->getTimeoutsCount() >= $this->maxProcessTimeout)) {
-                        $this->stopChild($id, SIGKILL);
+                        $child->stop(SIGKILL);
                     } elseif ($stopping) {
                         // Timeout reading data, and we're stopping
                         // we can stop the child
-                        $this->stopChild($id, 0);
+                        $child->stop();
                     } elseif ($child->restart(SIGKILL)) {
                         // Task restarted
                         $gotContent = true;
                     } else {
                         // Restart failed, remove it
-                        $this->stopChild($id);
+                        $child->stop();
                     }
 
                     break;
                 case ProcessInterface::READ_FAILED:
                     // Fail during read, we need to remove it
-                    $this->stopChild($id);
+                    $child->stop();
 
                 break;
             }
         }
 
         return $gotContent;
-    }
-
-    /**
-     * Remove a single child from our children list.
-     *
-     * @param int $id The id of the child to remove
-     */
-    protected function stopChild(int $id, int $signal = 0): void
-    {
-        if (!isset($this->children[$id])) {
-            return;
-        }
-        $this->children[$id]->stop($signal);
-        unset($this->children[$id]);
     }
 
     /**
