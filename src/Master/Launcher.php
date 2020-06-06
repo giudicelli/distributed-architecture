@@ -229,12 +229,21 @@ class Launcher implements LauncherInterface
      */
     public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount, EventsInterface $events = null): void
     {
+        if ($events) {
+            $events->started($this, $this->logger);
+        }
+
         // Start
         $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount, $events);
 
         $this->startedTime = time();
 
         $this->handleChildren($events);
+
+        if ($events) {
+            $events->stopped($this, $this->logger);
+        }
+
         $this->reset();
     }
 
@@ -371,6 +380,7 @@ class Launcher implements LauncherInterface
         $lastContent = time();
         $stopping = false;
         $stopStartTime = 0;
+        $mustStop = false;
 
         while ($this->isRunning()) {
             if ($this->readChildren(0 !== $stopStartTime)) {
@@ -394,7 +404,7 @@ class Launcher implements LauncherInterface
             if (!$stopStartTime) {
                 // Stop was not initiated
 
-                if ($this->mustStop) {
+                if ($mustStop || $this->mustStop) {
                     // We need to initiate the stop
 
                     $this->logMessage('notice', 'Stopping...');
@@ -408,7 +418,7 @@ class Launcher implements LauncherInterface
                     }
                 } elseif ($this->maxRunningTime && (time() - $this->startedTime) > $this->maxRunningTime) {
                     // Did we reach the maximum running time?
-                    $this->stop();
+                    $mustStop = true;
                 } elseif ($this->timeout && (time() - $lastContent) > $this->timeout) {
                     // Did we timeout  waiting for content from our children ?
                     $this->logMessage('error', 'Timeout waiting for content, force kill');
