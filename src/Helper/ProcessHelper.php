@@ -76,7 +76,7 @@ final class ProcessHelper
             if ($cpid == $pid) {
                 continue;
             }
-            posix_kill($pid, $signal);
+            posix_kill($cpid, $signal);
         }
         posix_kill($pid, $signal);
     }
