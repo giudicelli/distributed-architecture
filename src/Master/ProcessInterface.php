@@ -13,6 +13,7 @@ interface ProcessInterface
 {
     const STATUS_RUNNING = 'running';
     const STATUS_STOPPED = 'stopped';
+    const STATUS_STOPPING = 'stopping';
     const STATUS_ERROR = 'error';
 
     const READ_SUCCESS = 1;
@@ -118,7 +119,7 @@ interface ProcessInterface
     /**
      * Get the status of the process.
      *
-     * @return string The status, one of STATUS_RUNNING, STATUS_STOPPED, STATUS_ERROR
+     * @return string The status, one of STATUS_RUNNING, STATUS_STOPPED, STATUS_STOPPING, STATUS_ERROR
      */
     public function getStatus(): string;
 
@@ -156,4 +157,23 @@ interface ProcessInterface
      * @return string The host
      */
     public function getHost(): string;
+
+    /**
+     * Return at what time the process soft stop was initiated.
+     *
+     * @return int At what time the soft stop started
+     */
+    public function getStoppingAt(): int;
+
+    /**
+     * Return the configured timeout for this process.
+     *
+     * @return int The timeout
+     */
+    public function getTimeout(): int;
+
+    /**
+     * Is this process running ?
+     */
+    public function isRunning(): bool;
 }

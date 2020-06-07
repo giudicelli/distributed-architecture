@@ -71,21 +71,6 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
-    public function softStop(): void
-    {
-        // Sometimes proc_open actually forks a bash instead of the asked binary
-        // here we try to send the signal to the pid if it matches getBinPath()
-        // else to all its children that match getBinPath()
-        if (!ProcessHelper::killBinary($this->getBinPath(), $this->pid, SIGTERM)) {
-            // The binary could not be matched, just send the signal
-            // to the pid we have
-            posix_kill($this->pid, SIGTERM);
-        }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     protected function isEventCompatible(): bool
     {
         return true;
@@ -169,16 +154,33 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
+    protected function sendSignal(int $signal): void
+    {
+        if (!$this->pid) {
+            return;
+        }
+
+        if (SIGKILL === $signal) {
+            ProcessHelper::kill($this->pid, $signal);
+        } else {
+            // Sometimes proc_open actually forks a bash instead of the asked binary
+            // here we try to send the signal to the pid if it matches getBinPath()
+            // else to all its children that match getBinPath()
+            if (!ProcessHelper::killBinary($this->getBinPath(), $this->pid, $signal)) {
+                // The binary could not be matched, just send the signal
+                // to the pid we have
+                posix_kill($this->pid, $signal);
+            }
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     protected function kill(int $signal = 0): void
     {
-        if ($signal && $this->pid) {
-            if (SIGKILL === $signal) {
-                ProcessHelper::kill($this->pid, $signal);
-            } else {
-                if (!ProcessHelper::killBinary($this->getBinPath(), $this->pid, $signal)) {
-                    posix_kill($this->pid, $signal);
-                }
-            }
+        if ($signal) {
+            $this->sendSignal($signal);
         }
 
         // Cleaning handles

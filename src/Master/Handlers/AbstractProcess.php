@@ -21,6 +21,7 @@ abstract class AbstractProcess implements ProcessInterface
 {
     protected $status = self::STATUS_STOPPED;
     protected $lastSeen = 0;
+    protected $stoppingAt = 0;
     protected $lastSeenTimeout = 0;
     protected $id = 0;
     protected $groupId = 0;
@@ -70,11 +71,24 @@ abstract class AbstractProcess implements ProcessInterface
      */
     public function start(): bool
     {
+        // Already running, ignore
+        if (self::STATUS_RUNNING === $this->status) {
+            return true;
+        }
+
+        // We're asked to start a process that
+        // was previously stopping, we need to
+        // force kill it
+        if (self::STATUS_STOPPING === $this->status) {
+            $this->kill(SIGKILL);
+        }
+
         if (!$this->run()) {
             $this->status = self::STATUS_ERROR;
 
             return false;
         }
+        $this->stoppingAt = 0;
         $this->lastSeen = $this->lastSeenTimeout = time();
         $this->status = self::STATUS_RUNNING;
 
@@ -98,6 +112,21 @@ abstract class AbstractProcess implements ProcessInterface
                 $this->events->processStopped($this, $this->logger);
             }
         }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function softStop(): void
+    {
+        // Not running, ignore
+        if (self::STATUS_RUNNING !== $this->status) {
+            return;
+        }
+
+        $this->sendSignal(SIGTERM);
+        $this->status = self::STATUS_STOPPING;
+        $this->stoppingAt = time();
     }
 
     /**
@@ -241,6 +270,37 @@ abstract class AbstractProcess implements ProcessInterface
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function getTimeout(): int
+    {
+        if (-1 !== $this->config->getTimeout()) {
+            return $this->config->getTimeout();
+        }
+        if (-1 !== $this->groupConfig->getTimeout()) {
+            return $this->groupConfig->getTimeout();
+        }
+
+        return 30;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getStoppingAt(): int
+    {
+        return $this->stoppingAt;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function isRunning(): bool
+    {
+        return self::STATUS_RUNNING === $this->status || self::STATUS_STOPPING === $this->status;
+    }
+
+    /**
      * Do the actual start.
      */
     abstract protected function run(): bool;
@@ -251,6 +311,13 @@ abstract class AbstractProcess implements ProcessInterface
      * @param int $signal The signal to send the process to kill it
      */
     abstract protected function kill(int $signal = 0): void;
+
+    /**
+     * Send a signal to the process.
+     *
+     * @param int $signal the signal to send
+     */
+    abstract protected function sendSignal(int $signal): void;
 
     /**
      * Read one line from the process.
@@ -326,18 +393,5 @@ abstract class AbstractProcess implements ProcessInterface
         }
 
         return PHP_BINARY;
-    }
-
-    /** Return the configured timeout for this process */
-    protected function getTimeout(): int
-    {
-        if (-1 !== $this->config->getTimeout()) {
-            return $this->config->getTimeout();
-        }
-        if (-1 !== $this->groupConfig->getTimeout()) {
-            return $this->groupConfig->getTimeout();
-        }
-
-        return 30;
     }
 }

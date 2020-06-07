@@ -117,9 +117,22 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
-    public function softStop(): void
+    public function getTimeout(): int
     {
-        $this->sendSignal(SIGTERM);
+        // We need to overide this method.
+        // The local processes that will be launched
+        // will have their own timeout and
+        // their value will be the same as this
+        // remote process.
+        // So we might end up killing the remote process before
+        // its local process children have a chance to be restarted.
+
+        $timeout = parent::getTimeout();
+        if (!$timeout) {
+            return 0;
+        }
+
+        return $timeout + 30;
     }
 
     /**
@@ -350,26 +363,5 @@ class Process extends AbstractProcess
         $context['host'] = $this->getHost();
         $context['group'] = $this->getGroupConfig()->getName();
         $this->logger->log($level, $message, $context);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function getTimeout(): int
-    {
-        // We need to overide this method.
-        // The local processes that will be launched
-        // will have their own timeout and
-        // their value will be the same as this
-        // remote process.
-        // So we might end up killing the remote process before
-        // its local process children have a chance to be restarted.
-
-        $timeout = parent::getTimeout();
-        if (!$timeout) {
-            return 0;
-        }
-
-        return $timeout + 30;
     }
 }

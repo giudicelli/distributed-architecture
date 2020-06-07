@@ -150,7 +150,7 @@ class Launcher implements LauncherInterface
     public function isRunning(): bool
     {
         foreach ($this->children as $child) {
-            if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
+            if ($child->isRunning()) {
                 return true;
             }
         }
@@ -409,6 +409,25 @@ class Launcher implements LauncherInterface
                 $events->check($this, $this->logger);
             }
 
+            // Check each process
+            foreach ($this->children as $child) {
+                // We only care about stopping processes
+                if (ProcessInterface::STATUS_STOPPING !== $child->getStatus()) {
+                    continue;
+                }
+                $processTimeout = $child->getTimeout();
+                $masterTimeout = $this->getTimeout();
+                $timeout = $masterTimeout <= $processTimeout ? $masterTimeout : $processTimeout;
+                if (!$timeout) {
+                    continue;
+                }
+                if ((time() - $child->getStoppingAt()) > $timeout) {
+                    // Process has been asked too long along to stop,
+                    // force kill it
+                    $child->stop(SIGKILL);
+                }
+            }
+
             if (!$stopStartTime) {
                 // Stop was not initiated
 
@@ -420,21 +439,21 @@ class Launcher implements LauncherInterface
 
                     // Request a soft stop
                     foreach ($this->children as $child) {
-                        if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
+                        if ($child->isRunning()) {
                             $child->softStop();
                         }
                     }
                 } elseif ($this->maxRunningTime && (time() - $this->startedTime) > $this->maxRunningTime) {
                     // Did we reach the maximum running time?
                     $mustStop = true;
-                } elseif ($this->timeout && (time() - $lastContent) > $this->timeout) {
+                } elseif ($this->getTimeout() && (time() - $lastContent) > $this->getTimeout()) {
                     // Did we timeout  waiting for content from our children ?
                     $this->logMessage('error', 'Timeout waiting for content, force kill');
 
                     // Exit the loop to force kill all remaining children
                     break;
                 }
-            } elseif ($this->timeout && (time() - $stopStartTime) >= $this->timeout) {
+            } elseif ($this->getTimeout() && (time() - $stopStartTime) >= $this->getTimeout()) {
                 // Did we timeout waiting for our children to perform a clean exit?
                 $this->logMessage('error', 'Timeout waiting for clean shutdown, force kill');
 
@@ -446,7 +465,7 @@ class Launcher implements LauncherInterface
         // If there there are some remaining children.
         // We need to force kill them
         foreach ($this->children as $child) {
-            if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
+            if (ProcessInterface::STATUS_STOPPED !== $child->getStatus()) {
                 $child->stop(SIGKILL);
             }
         }
@@ -460,7 +479,7 @@ class Launcher implements LauncherInterface
         $gotContent = false;
         foreach ($this->children as $child) {
             // We only care about running children
-            if (ProcessInterface::STATUS_RUNNING !== $child->getStatus()) {
+            if (!$child->isRunning()) {
                 continue;
             }
 
