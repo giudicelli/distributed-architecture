@@ -73,6 +73,14 @@ class Launcher implements LauncherInterface
     /**
      * {@inheritdoc}
      */
+    public function getTimeout(): ?int
+    {
+        return $this->timeout;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function setMaxRunningTime(?int $maxRunningTime): LauncherInterface
     {
         $this->maxRunningTime = $maxRunningTime;

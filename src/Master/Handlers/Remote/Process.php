@@ -210,6 +210,7 @@ class Process extends AbstractProcess
         $params[Handler::PARAM_CONFIG] = $this->config;
         $params[Handler::PARAM_CONFIG_CLASS] = $this->getRemoteConfigClass();
         $params[Handler::PARAM_LAUNCHER_CLASS] = get_class($this->getParent());
+        $params[Handler::PARAM_LAUNCHER_TIMEOUT] = $this->getParent()->getTimeout();
         if ($this->events) {
             $params[Handler::PARAM_EVENTS_CLASS] = get_class($this->events);
         }

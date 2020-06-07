@@ -15,6 +15,11 @@ interface LauncherInterface
     public function setTimeout(?int $timeout): self;
 
     /**
+     * Get the general timeout.
+     */
+    public function getTimeout(): ?int;
+
+    /**
      * Set the maximum time it can run for.
      */
     public function setMaxRunningTime(?int $maxRunningTime): self;
