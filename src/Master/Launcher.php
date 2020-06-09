@@ -3,8 +3,8 @@
 namespace giudicelli\DistributedArchitecture\Master;
 
 use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
-use giudicelli\DistributedArchitecture\Master\Handlers\Local\Process as ProcessLocal;
-use giudicelli\DistributedArchitecture\Master\Handlers\Remote\Process as ProcessRemote;
+use giudicelli\DistributedArchitecture\Master\Handlers\Local\Process as LocalProcess;
+use giudicelli\DistributedArchitecture\Master\Handlers\Remote\Process as RemoteProcess;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -103,6 +103,9 @@ class Launcher implements LauncherInterface
      */
     public function run(array $groupConfigs, ?EventsInterface $events = null, bool $neverExit = false): void
     {
+        // Validate the config
+        $this->checkGroupConfigs($groupConfigs);
+
         // First count the total number of processes
         // that will be launched in each group
         $groupCounts = [];
@@ -270,6 +273,20 @@ class Launcher implements LauncherInterface
     }
 
     /**
+     * Called before run, to check the group configs.
+     *
+     * @param array<GroupConfigInterface> $groupConfigs The configuration for each group of processes to check
+     */
+    protected function checkGroupConfigs(array $groupConfigs): void
+    {
+        foreach ($groupConfigs as $groupConfig) {
+            foreach ($groupConfig->getProcessConfigs() as $processConfig) {
+                $this->getConfigProcess($processConfig);
+            }
+        }
+    }
+
+    /**
      * Return the list of ProcessInterface handled by this launcher.
      *
      * @return array<string> The list of ProcessInterface classes
@@ -277,8 +294,8 @@ class Launcher implements LauncherInterface
     protected function getProcessHandlersList(): array
     {
         return [
-            ProcessLocal::class,
-            ProcessRemote::class,
+            LocalProcess::class,
+            RemoteProcess::class,
         ];
     }
 

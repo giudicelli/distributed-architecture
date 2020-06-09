@@ -6,7 +6,7 @@ use giudicelli\DistributedArchitecture\Master\ConfigInterface;
 use giudicelli\DistributedArchitecture\Master\EventsInterface;
 use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcess;
-use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config as ConfigLocal;
+use giudicelli\DistributedArchitecture\Master\Handlers\Local\Config as LocalConfig;
 use giudicelli\DistributedArchitecture\Master\LauncherInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Slave\Handler;
@@ -242,7 +242,7 @@ class Process extends AbstractProcess
      */
     protected function getRemoteConfigClass(): string
     {
-        return ConfigLocal::class;
+        return LocalConfig::class;
     }
 
     /**
