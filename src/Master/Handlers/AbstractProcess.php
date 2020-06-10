@@ -8,6 +8,7 @@ use giudicelli\DistributedArchitecture\Master\LauncherInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessInterface;
 use giudicelli\DistributedArchitecture\Slave\Handler;
+use giudicelli\DistributedArchitecture\StoppableInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -160,7 +161,7 @@ abstract class AbstractProcess implements ProcessInterface
                     return self::READ_FAILED;
                 }
 
-                if (Handler::PING_MESSAGE === $line) {
+                if (StoppableInterface::PING_MESSAGE === $line) {
                     return self::READ_SUCCESS;
                 }
 

@@ -223,7 +223,13 @@ class Process extends AbstractProcess
         $params[Handler::PARAM_CONFIG] = $this->config;
         $params[Handler::PARAM_CONFIG_CLASS] = $this->getRemoteConfigClass();
         $params[Handler::PARAM_LAUNCHER_CLASS] = get_class($this->getParent());
-        $params[Handler::PARAM_LAUNCHER_TIMEOUT] = $this->getParent()->getTimeout();
+        if (!$this->getParent()->getTimeout()) {
+            $params[Handler::PARAM_LAUNCHER_TIMEOUT] = 0;
+        } else {
+            // We want to have the remote launcher's timeout
+            // to be smaller the ours
+            $params[Handler::PARAM_LAUNCHER_TIMEOUT] = $this->getParent()->getTimeout() - 2;
+        }
         if ($this->events) {
             $params[Handler::PARAM_EVENTS_CLASS] = get_class($this->events);
         }

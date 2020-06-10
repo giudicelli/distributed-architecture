@@ -2,6 +2,7 @@
 
 namespace giudicelli\DistributedArchitecture\Slave;
 
+use giudicelli\DistributedArchitecture\AbstractStoppable;
 use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
 use giudicelli\DistributedArchitecture\Master\EventsInterface;
@@ -14,7 +15,7 @@ use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
  *
  *  @author Frédéric Giudicelli
  */
-class Handler implements StoppableInterface, HandlerInterface
+class Handler extends AbstractStoppable implements HandlerInterface
 {
     const PARAM_PREFIX = 'gda_';
     const PARAM_ID = self::PARAM_PREFIX.'id';
@@ -34,18 +35,13 @@ class Handler implements StoppableInterface, HandlerInterface
     const PARAM_COMMAND_KILL = 'kill';
     const PARAM_COMMAND_LAUNCH = 'launch';
 
-    const PING_MESSAGE = 'Handler::ping';
     const ENDED_MESSAGE = 'Handler::ended';
-
-    protected $mustStop = false;
 
     protected $id = 0;
 
     protected $groupId = 0;
 
     protected $groupCount = 0;
-
-    protected $lastSentPing = 0;
 
     /** @var array */
     protected $params;
@@ -59,14 +55,6 @@ class Handler implements StoppableInterface, HandlerInterface
     public function __construct(string $params)
     {
         $this->parseParams($params);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function mustStop(): bool
-    {
-        return $this->mustStop;
     }
 
     /**
@@ -102,57 +90,12 @@ class Handler implements StoppableInterface, HandlerInterface
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function ping(): void
-    {
-        // Avoid flooding
-        $t = time();
-        if (($t - $this->lastSentPing) < 5) {
-            return;
-        }
-        $this->lastSentPing = $t;
-
-        echo self::PING_MESSAGE."\n";
-        flush();
-    }
-
-    /**
      * Let the master process know we're done. It needs to be call just before the process exits.
      */
     public function sendEnded(): void
     {
         echo self::ENDED_MESSAGE."\n";
         flush();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function sleep(int $s): bool
-    {
-        if ($this->mustStop) {
-            return false;
-        }
-        $t = time();
-        while ((time() - $t) < $s) {
-            if ($this->mustStop) {
-                return false;
-            }
-            usleep(30000);
-            $this->ping();
-        }
-        $this->ping();
-
-        return true;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function stop(): void
-    {
-        $this->mustStop = true;
     }
 
     /**

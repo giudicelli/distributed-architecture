@@ -1,6 +1,6 @@
 <?php
 
-namespace giudicelli\DistributedArchitecture\Slave;
+namespace giudicelli\DistributedArchitecture;
 
 /**
  * The interface defines the model for a stoppable object.
@@ -9,6 +9,8 @@ namespace giudicelli\DistributedArchitecture\Slave;
  */
 interface StoppableInterface
 {
+    const PING_MESSAGE = 'Handler::ping';
+
     /**
      * Returns whether the process was asked to be stopped.
      *
@@ -31,4 +33,9 @@ interface StoppableInterface
      * master process think this process is dead.
      */
     public function ping(): void;
+
+    /**
+     * Stop.
+     */
+    public function stop(): void;
 }

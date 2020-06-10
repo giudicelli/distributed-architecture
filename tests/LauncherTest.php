@@ -252,6 +252,9 @@ final class LauncherTest extends TestCase
 
         sleep(1);
 
+        // PING
+        $this->assertEquals(ProcessInterface::READ_SUCCESS, $children[0]->read(), 'RemoteProcess::read returns READ_SUCCESS');
+
         // ONE_LINE
         $this->assertEquals(ProcessInterface::READ_SUCCESS, $children[0]->read(), 'RemoteProcess::read returns READ_SUCCESS');
 
@@ -406,10 +409,10 @@ final class LauncherTest extends TestCase
 
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
-            'debug - [test] [127.0.0.1] Connected to host',
-            'error - [master] Timeout waiting for content, force kill',
+            'error - [test] [127.0.0.1] [master] Timeout waiting for content, force kill',
             'info - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Child 1 1',
             'notice - [test] [127.0.0.1] Ended',
+            'notice - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Ended',
         ];
         $this->assertEquals($expected, $output);
     }
@@ -428,13 +431,13 @@ final class LauncherTest extends TestCase
         $expected = [
             'debug - [test] [127.0.0.1] Connected to host',
             'debug - [test] [127.0.0.1] Connected to host',
-            'debug - [test] [127.0.0.1] Connected to host',
-            'error - [master] Timeout waiting for clean shutdown, force kill',
+            'error - [test] [127.0.0.1] [master] Timeout waiting for clean shutdown, force kill',
             'info - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Child 1 1',
             'notice - [master] Stopping...',
             'notice - [test] [127.0.0.1] Ended',
             'notice - [test] [127.0.0.1] [master] Received SIGTERM, stopping',
             'notice - [test] [127.0.0.1] [master] Stopping...',
+            'notice - [test] [127.0.0.1] [tests/SlaveFile.php/1/1] Ended',
         ];
         $this->assertEquals($expected, $output);
     }

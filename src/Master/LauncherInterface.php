@@ -2,12 +2,14 @@
 
 namespace giudicelli\DistributedArchitecture\Master;
 
+use giudicelli\DistributedArchitecture\StoppableInterface;
+
 /**
  * The interface defines the model for a launcher. Its main role is to launch processes.
  *
  *  @author Frédéric Giudicelli
  */
-interface LauncherInterface
+interface LauncherInterface extends StoppableInterface
 {
     /**
      * Set the general timeout.
@@ -49,11 +51,6 @@ interface LauncherInterface
      * @param EventsInterface        $events        An events interface to be called upon events
      */
     public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount, EventsInterface $events = null): void;
-
-    /**
-     * Stop all processes. Even if $neverExit was set to true when run() was called.
-     */
-    public function stop(): void;
 
     /**
      * Are there any process currently running?

@@ -2,6 +2,7 @@
 
 namespace giudicelli\DistributedArchitecture\Master;
 
+use giudicelli\DistributedArchitecture\AbstractStoppable;
 use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Process as LocalProcess;
 use giudicelli\DistributedArchitecture\Master\Handlers\Remote\Process as RemoteProcess;
@@ -12,10 +13,8 @@ use Psr\Log\LoggerInterface;
  *
  *  @author Frédéric Giudicelli
  */
-class Launcher implements LauncherInterface
+class Launcher extends AbstractStoppable implements LauncherInterface
 {
-    protected $mustStop = false;
-
     protected $timeout = 300;
 
     protected $maxRunningTime = 0;
@@ -55,17 +54,9 @@ class Launcher implements LauncherInterface
     /**
      * {@inheritdoc}
      */
-    public function stop(): void
-    {
-        $this->mustStop = true;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function setTimeout(?int $timeout): LauncherInterface
     {
-        $this->timeout = $timeout;
+        $this->timeout = $timeout > 5 ? $timeout : 5;
 
         return $this;
     }
@@ -116,7 +107,7 @@ class Launcher implements LauncherInterface
         // Start everything
         $idStart = 1;
         foreach ($groupConfigs as $index => $groupConfig) {
-            if ($this->mustStop) {
+            if ($this->mustStop()) {
                 break;
             }
             $idStart += $this->startGroup($groupConfig, $idStart, 1, $groupCounts[$index], $events);
@@ -130,7 +121,7 @@ class Launcher implements LauncherInterface
             $this->startedTime = time();
             $this->handleChildren($events);
         } else {
-            while (!$this->mustStop) {
+            while (!$this->mustStop()) {
                 $this->startedTime = time();
                 $this->handleChildren($events);
                 sleep(2);
@@ -420,6 +411,12 @@ class Launcher implements LauncherInterface
             } else {
                 // 100ms
                 usleep(100000);
+
+                if (!$this->isMaster) {
+                    // We're a remote launcher,
+                    // let the master know we're alive
+                    $this->ping();
+                }
             }
 
             if ($events) {
@@ -448,7 +445,7 @@ class Launcher implements LauncherInterface
             if (!$stopStartTime) {
                 // Stop was not initiated
 
-                if ($mustStop || $this->mustStop) {
+                if ($mustStop || $this->mustStop()) {
                     // We need to initiate the stop
 
                     $this->logMessage('notice', 'Stopping...');
