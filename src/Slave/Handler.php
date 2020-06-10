@@ -123,7 +123,7 @@ class Handler extends AbstractStoppable implements HandlerInterface
     {
         switch ($signo) {
             case SIGTERM:
-                $this->mustStop = true;
+                $this->stop();
 
                 break;
         }
