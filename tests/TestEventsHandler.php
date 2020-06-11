@@ -21,6 +21,13 @@ class TestEventsHandler implements EventsInterface
     /**
      * {@inheritdoc}
      */
+    public function starting(LauncherInterface $launcher, LoggerInterface $logger): void
+    {
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function started(LauncherInterface $launcher, LoggerInterface $logger): void
     {
         if (!$launcher->isMaster()) {

@@ -94,6 +94,10 @@ class Launcher extends AbstractStoppable implements LauncherInterface
      */
     public function run(array $groupConfigs, ?EventsInterface $events = null, bool $neverExit = false): void
     {
+        if ($events) {
+            $events->starting($this, $this->logger);
+        }
+
         // Validate the config
         $this->checkGroupConfigs($groupConfigs);
 
@@ -232,11 +236,15 @@ class Launcher extends AbstractStoppable implements LauncherInterface
     public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount, EventsInterface $events = null): void
     {
         if ($events) {
-            $events->started($this, $this->logger);
+            $events->starting($this, $this->logger);
         }
 
         // Start
         $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount, $events);
+
+        if ($events) {
+            $events->started($this, $this->logger);
+        }
 
         $this->startedTime = time();
 

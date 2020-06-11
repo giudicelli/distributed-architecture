@@ -12,6 +12,14 @@ use Psr\Log\LoggerInterface;
 interface EventsInterface
 {
     /**
+     * Called when the launcher is starting.
+     *
+     * @param LauncherInterface $launcher The launcher
+     * @param LoggerInterface   $logger   A logger
+     */
+    public function starting(LauncherInterface $launcher, LoggerInterface $logger): void;
+
+    /**
      * Called when all the processes have been launched.
      *
      * @param LauncherInterface $launcher The launcher
