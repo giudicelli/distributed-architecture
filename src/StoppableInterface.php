@@ -21,11 +21,12 @@ interface StoppableInterface
     /**
      * Sleep a certain time duration. Fail if process is requested to stop and send pings to the master during the wait time.
      *
-     * @param int The wait time
+     * @param int  $s    he wait time
+     * @param bool $ping Should a ping be sent while waiting
      *
      * @return bool Was the wait interrupted by a stop signal
      */
-    public function sleep(int $s): bool;
+    public function sleep(int $s, bool $ping = true): bool;
 
     /**
      * Pings the master process to let it know this current process is still alive.

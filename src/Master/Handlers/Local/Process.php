@@ -2,14 +2,11 @@
 
 namespace giudicelli\DistributedArchitecture\Master\Handlers\Local;
 
+use giudicelli\DistributedArchitecture\Config\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Config\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
-use giudicelli\DistributedArchitecture\Master\ConfigInterface;
-use giudicelli\DistributedArchitecture\Master\EventsInterface;
-use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcess;
 use giudicelli\DistributedArchitecture\Master\LauncherInterface;
-use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
-use Psr\Log\LoggerInterface;
 
 /**
  * A process started on the same computer as the master.
@@ -35,7 +32,7 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
-    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
+    public static function instanciate(LauncherInterface $launcher, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array
     {
         $class = get_called_class();
 
@@ -50,7 +47,7 @@ class Process extends AbstractProcess
 
         $children = [];
         for ($i = 0, $id = $idStart, $groupId = $groupIdStart; $i < $config->getInstancesCount(); ++$i, ++$id, ++$groupId) {
-            $children[] = new $class($logger, $id, $groupId, $groupCount, $groupConfig, $config, $launcher, $events);
+            $children[] = new $class($id, $groupId, $groupCount, $groupConfig, $config, $launcher);
         }
 
         return $children;
@@ -59,12 +56,8 @@ class Process extends AbstractProcess
     /**
      * {@inheritdoc}
      */
-    public static function willStartCount(ConfigInterface $config): int
+    public static function willStartCount(ProcessConfigInterface $config): int
     {
-        if (!($config instanceof Config)) {
-            return 0;
-        }
-
         return $config->getInstancesCount();
     }
 

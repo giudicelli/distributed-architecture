@@ -2,14 +2,12 @@
 
 namespace giudicelli\DistributedArchitecture\Master\Handlers;
 
-use giudicelli\DistributedArchitecture\Master\EventsInterface;
-use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Config\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Config\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Master\LauncherInterface;
-use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Master\ProcessInterface;
 use giudicelli\DistributedArchitecture\Slave\Handler;
 use giudicelli\DistributedArchitecture\StoppableInterface;
-use Psr\Log\LoggerInterface;
 
 /**
  * The general implementation for a process.
@@ -28,7 +26,6 @@ abstract class AbstractProcess implements ProcessInterface
     protected $groupId = 0;
     protected $groupCount = 0;
     protected $timeoutsCount = 0;
-    protected $logger;
     protected $host = 'localhost';
 
     /** @var ProcessConfigInterface */
@@ -40,18 +37,13 @@ abstract class AbstractProcess implements ProcessInterface
     /** @var LauncherInterface */
     protected $launcher;
 
-    /** @var null|EventsInterface */
-    protected $events;
-
     public function __construct(
-        LoggerInterface $logger,
         int $id,
         int $groupId,
         int $groupCount,
         GroupConfigInterface $groupConfig,
         ProcessConfigInterface $config,
-        LauncherInterface $launcher,
-        ?EventsInterface $events = null
+        LauncherInterface $launcher
     ) {
         if (!$groupConfig->getCommand()) {
             throw new \InvalidArgumentException('Missing command for: '.json_encode($groupConfig));
@@ -63,8 +55,6 @@ abstract class AbstractProcess implements ProcessInterface
         $this->groupConfig = $groupConfig;
         $this->config = $config;
         $this->launcher = $launcher;
-        $this->events = $events;
-        $this->logger = $logger;
     }
 
     /**
@@ -72,16 +62,14 @@ abstract class AbstractProcess implements ProcessInterface
      */
     public function start(): bool
     {
-        // Already running, ignore
-        if (self::STATUS_RUNNING === $this->status) {
-            return true;
-        }
-
         // We're asked to start a process that
         // was previously stopping, we need to
         // force kill it
         if (self::STATUS_STOPPING === $this->status) {
-            $this->kill(SIGKILL);
+            $this->stop(SIGKILL);
+        } elseif ($this->isRunning()) {
+            // Already running, ignore
+            return true;
         }
 
         if (!$this->run()) {
@@ -93,8 +81,8 @@ abstract class AbstractProcess implements ProcessInterface
         $this->lastSeen = $this->lastSeenTimeout = time();
         $this->status = self::STATUS_RUNNING;
 
-        if ($this->isEventCompatible() && $this->events) {
-            $this->events->processStarted($this, $this->logger);
+        if ($this->isEventCompatible() && $this->getParent()->getEventsHandler()) {
+            $this->getParent()->getEventsHandler()->processStarted($this);
         }
 
         return true;
@@ -105,12 +93,16 @@ abstract class AbstractProcess implements ProcessInterface
      */
     public function stop(int $signal = 0): void
     {
-        $this->kill($signal);
+        // Not running, ignore
+        if ($this->isRunning()) {
+            $this->kill($signal);
+        }
+
         if (self::STATUS_STOPPED !== $this->status) {
             $this->status = self::STATUS_STOPPED;
             $this->logMessage('notice', 'Ended');
-            if ($this->isEventCompatible() && $this->events) {
-                $this->events->processStopped($this, $this->logger);
+            if ($this->isEventCompatible() && $this->getParent()->getEventsHandler()) {
+                $this->getParent()->getEventsHandler()->processStopped($this);
             }
         }
     }
@@ -121,7 +113,7 @@ abstract class AbstractProcess implements ProcessInterface
     public function softStop(): void
     {
         // Not running, ignore
-        if (self::STATUS_RUNNING !== $this->status) {
+        if (!$this->isRunning()) {
             return;
         }
 
@@ -145,6 +137,22 @@ abstract class AbstractProcess implements ProcessInterface
      */
     public function read(): int
     {
+        if (!$this->isRunning()) {
+            return self::READ_FAILED;
+        }
+
+        // Check for softStop timeout
+        if (ProcessInterface::STATUS_STOPPING === $this->getStatus()) {
+            $timeout = $this->getTimeout();
+            if ($timeout && (time() - $this->stoppingAt) >= $timeout) {
+                $this->logMessage('error', 'Timeout reached while waiting for soft stop...');
+
+                $this->stop(SIGKILL);
+
+                return self::READ_FAILED;
+            }
+        }
+
         $line = '';
         $status = $this->readLine($line);
         switch ($status) {
@@ -152,8 +160,8 @@ abstract class AbstractProcess implements ProcessInterface
                 $this->timeoutsCount = 0;
                 $this->lastSeen = $this->lastSeenTimeout = time();
 
-                if ($this->isEventCompatible() && $this->events) {
-                    $this->events->processWasSeen($this, $line, $this->logger);
+                if ($this->isEventCompatible() && $this->getParent()->getEventsHandler()) {
+                    $this->getParent()->getEventsHandler()->processWasSeen($this, $line);
                 }
 
                 if (Handler::ENDED_MESSAGE === $line) {
@@ -175,8 +183,8 @@ abstract class AbstractProcess implements ProcessInterface
                     $this->lastSeenTimeout = time();
                     $this->logMessage('error', 'Timeout reached while waiting for data...');
 
-                    if ($this->isEventCompatible() && $this->events) {
-                        $this->events->processTimedout($this, $this->logger);
+                    if ($this->isEventCompatible() && $this->getParent()->getEventsHandler()) {
+                        $this->getParent()->getEventsHandler()->processTimedout($this);
                     }
 
                     return self::READ_TIMEOUT;
@@ -184,8 +192,6 @@ abstract class AbstractProcess implements ProcessInterface
 
                 return $status;
             case self::READ_FAILED:
-                $this->status = self::STATUS_ERROR;
-
                 return $status;
         }
     }
@@ -288,17 +294,9 @@ abstract class AbstractProcess implements ProcessInterface
     /**
      * {@inheritdoc}
      */
-    public function getStoppingAt(): int
-    {
-        return $this->stoppingAt;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function isRunning(): bool
     {
-        return self::STATUS_RUNNING === $this->status || self::STATUS_STOPPING === $this->status;
+        return self::STATUS_STOPPED !== $this->status && self::STATUS_ERROR !== $this->status;
     }
 
     /**
@@ -348,7 +346,7 @@ abstract class AbstractProcess implements ProcessInterface
         $context['display'] = $this->getDisplay();
         $context['host'] = $this->getHost();
         $context['group'] = $this->getGroupConfig()->getName();
-        $this->logger->log($level, $message, $context);
+        $this->getParent()->getLogger()->log($level, $message, $context);
     }
 
     /**

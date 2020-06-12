@@ -48,7 +48,7 @@ abstract class AbstractStoppable implements StoppableInterface
     /**
      * {@inheritdoc}
      */
-    public function sleep(int $s): bool
+    public function sleep(int $s, bool $ping = true): bool
     {
         if ($this->mustStop()) {
             return false;

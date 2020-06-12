@@ -1,6 +1,6 @@
 <?php
 
-namespace giudicelli\DistributedArchitecture\Master;
+namespace giudicelli\DistributedArchitecture\Config;
 
 /**
  * The general config interface.

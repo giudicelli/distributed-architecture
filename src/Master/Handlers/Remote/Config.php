@@ -2,7 +2,7 @@
 
 namespace giudicelli\DistributedArchitecture\Master\Handlers\Remote;
 
-use giudicelli\DistributedArchitecture\Master\Handlers\AbstractProcessConfig;
+use giudicelli\DistributedArchitecture\Config\AbstractProcessConfig;
 
 /**
  * The config to start a remote process.

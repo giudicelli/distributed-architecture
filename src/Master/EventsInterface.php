@@ -2,8 +2,6 @@
 
 namespace giudicelli\DistributedArchitecture\Master;
 
-use Psr\Log\LoggerInterface;
-
 /**
  * This interface defines the possible events associated with a LauncherInterface.
  *
@@ -12,67 +10,59 @@ use Psr\Log\LoggerInterface;
 interface EventsInterface
 {
     /**
-     * Called when the launcher is starting.
+     * Called before all the processes are launched, it will be called multiple times.
      *
      * @param LauncherInterface $launcher The launcher
-     * @param LoggerInterface   $logger   A logger
      */
-    public function starting(LauncherInterface $launcher, LoggerInterface $logger): void;
+    public function starting(LauncherInterface $launcher): void;
 
     /**
-     * Called when all the processes have been launched.
+     * Called when all the processes have been launched, it will be called multiple times.
      *
      * @param LauncherInterface $launcher The launcher
-     * @param LoggerInterface   $logger   A logger
      */
-    public function started(LauncherInterface $launcher, LoggerInterface $logger): void;
+    public function started(LauncherInterface $launcher): void;
 
     /**
-     * Allows some checks to be performed.
+     * Allows some checks to be performed, it will be called multiple times.
      *
-     * @param LauncherInterface $launcher The launcher
-     * @param LoggerInterface   $logger   A logger
+     * @param LauncherInterface $launcher The launcher, it will be called multiplpe times
      */
-    public function check(LauncherInterface $launcher, LoggerInterface $logger): void;
+    public function check(LauncherInterface $launcher): void;
 
     /**
-     * Called when all the processes are stopped.
+     * Called when the launcher is done, it will be called only once.
      *
      * @param LauncherInterface $launcher The launcher
-     * @param LoggerInterface   $logger   A logger
      */
-    public function stopped(LauncherInterface $launcher, LoggerInterface $logger): void;
+    public function stopped(LauncherInterface $launcher): void;
 
     /**
      * Called when a process is started.
      *
      * @param ProcessInterface $process The process
-     * @param LoggerInterface  $logger  A logger
      */
-    public function processStarted(ProcessInterface $process, LoggerInterface $logger): void;
+    public function processStarted(ProcessInterface $process): void;
 
     /**
      * Called when a process timed out.
      *
      * @param ProcessInterface $process The process
-     * @param LoggerInterface  $logger  A logger
      */
-    public function processTimedout(ProcessInterface $process, LoggerInterface $logger): void;
+    public function processTimedout(ProcessInterface $process): void;
 
     /**
      * Called when a process stopped.
      *
      * @param ProcessInterface $process The process
-     * @param LoggerInterface  $logger  A logger
      */
-    public function processStopped(ProcessInterface $process, LoggerInterface $logger): void;
+    public function processStopped(ProcessInterface $process): void;
 
     /**
      * Called when a process returned data and is well alive.
      *
      * @param ProcessInterface $process The process
      * @param string           $line    Last line sent by the process
-     * @param LoggerInterface  $logger  A logger
      */
-    public function processWasSeen(ProcessInterface $process, string $line, LoggerInterface $logger): void;
+    public function processWasSeen(ProcessInterface $process, string $line): void;
 }

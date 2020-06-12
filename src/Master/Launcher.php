@@ -3,6 +3,8 @@
 namespace giudicelli\DistributedArchitecture\Master;
 
 use giudicelli\DistributedArchitecture\AbstractStoppable;
+use giudicelli\DistributedArchitecture\Config\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Config\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
 use giudicelli\DistributedArchitecture\Master\Handlers\Local\Process as LocalProcess;
 use giudicelli\DistributedArchitecture\Master\Handlers\Remote\Process as RemoteProcess;
@@ -30,7 +32,14 @@ class Launcher extends AbstractStoppable implements LauncherInterface
 
     protected $mappingConfigProcess;
 
+    /** @var bool */
     protected $isMaster;
+
+    /** @var EventsInterface */
+    protected $events;
+
+    /** @var array<SuspendableGroupConfig> */
+    protected $groupConfigs;
 
     /**
      * @param bool $isMaster true when this instance is the main master, false when it's a remote launcher
@@ -92,54 +101,144 @@ class Launcher extends AbstractStoppable implements LauncherInterface
     /**
      * {@inheritdoc}
      */
-    public function run(array $groupConfigs, ?EventsInterface $events = null, bool $neverExit = false): void
+    public function setEventsHandler(?EventsInterface $events): LauncherInterface
     {
-        if ($events) {
-            $events->starting($this, $this->logger);
-        }
+        $this->events = $events;
 
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getEventsHandler(): ?EventsInterface
+    {
+        return $this->events;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setGroupConfigs(array $groupConfigs): LauncherInterface
+    {
         // Validate the config
         $this->checkGroupConfigs($groupConfigs);
 
-        // First count the total number of processes
-        // that will be launched in each group
-        $groupCounts = [];
-        foreach ($groupConfigs as $index => $groupConfig) {
-            $groupCounts[$index] = $this->countGroup($groupConfig);
-        }
-
-        // Start everything
-        $idStart = 1;
-        foreach ($groupConfigs as $index => $groupConfig) {
-            if ($this->mustStop()) {
-                break;
+        if ($this->isMaster()) {
+            // We're the master, we need to transform the groups into SuspendableGroupConfig
+            $this->groupConfigs = [];
+            foreach ($groupConfigs as $groupConfig) {
+                $this->groupConfigs[] = new SuspendableGroupConfig($groupConfig);
             }
-            $idStart += $this->startGroup($groupConfig, $idStart, 1, $groupCounts[$index], $events);
-        }
-
-        if ($events) {
-            $events->started($this, $this->logger);
-        }
-
-        if (!$neverExit) {
-            $this->startedTime = time();
-            $this->handleChildren($events);
         } else {
-            while (!$this->mustStop()) {
-                $this->startedTime = time();
-                $this->handleChildren($events);
-                sleep(2);
-                if ($events) {
-                    $events->check($this, $this->logger);
+            $this->groupConfigs = $groupConfigs;
+        }
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getLogger(): LoggerInterface
+    {
+        return $this->logger;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function runMaster(bool $neverExit = false): void
+    {
+        $this->mustStop = false;
+        do {
+            // Wait while all groups are suspended
+            do {
+                $allSuspended = true;
+                foreach ($this->groupConfigs as $groupConfig) {
+                    if (!$groupConfig->isSuspended()) {
+                        $allSuspended = false;
+
+                        break;
+                    }
+                }
+                if ($allSuspended) {
+                    if ($this->events) {
+                        $this->events->check($this);
+                    }
+                    if (!$this->sleep(1, false)) {
+                        return;
+                    }
+                }
+            } while ($allSuspended);
+
+            if ($this->events) {
+                $this->events->starting($this);
+            }
+
+            // Start all groups that are not suspended
+            $idStart = 1;
+            foreach ($this->groupConfigs as $groupConfig) {
+                if ($this->mustStop()) {
+                    break;
+                }
+                if (!$groupConfig->isSuspended()) {
+                    $idStart += $this->startGroup($groupConfig, $idStart, 1, $this->countGroup($groupConfig));
                 }
             }
+            if ($this->events) {
+                $this->events->started($this);
+            }
+
+            $this->startedTime = time();
+            $this->handleChildren();
+
+            $this->children = [];
+        } while ($neverExit && !$this->mustStop());
+
+        if ($this->events) {
+            $this->events->stopped($this);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function runRemote(int $idStart, int $groupIdStart, int $groupCount): void
+    {
+        if ($this->events) {
+            $this->events->starting($this);
         }
 
-        $this->reset();
-
-        if ($events) {
-            $events->stopped($this, $this->logger);
+        if (empty($this->groupConfigs) || 1 !== count($this->groupConfigs)) {
+            throw new \InvalidArgumentException('Expected 1 single group');
         }
+
+        if (empty($this->groupConfigs[0]->getProcessConfigs()) || 1 !== count($this->groupConfigs[0]->getProcessConfigs())) {
+            throw new \InvalidArgumentException('Expected 1 single process in the group');
+        }
+
+        $this->startGroupProcess(
+            $this->groupConfigs[0],
+            $this->groupConfigs[0]->getProcessConfigs()[0],
+            $idStart,
+            $groupIdStart,
+            $groupCount
+        );
+
+        if ($this->events) {
+            $this->events->started($this);
+        }
+
+        $this->startedTime = time();
+
+        $this->handleChildren();
+
+        if ($this->events) {
+            $this->events->stopped($this);
+        }
+
+        $this->children = [];
     }
 
     /**
@@ -167,41 +266,73 @@ class Launcher extends AbstractStoppable implements LauncherInterface
     /**
      * {@inheritdoc}
      */
-    public function runGroup(string $groupName): void
+    public function resumeGroup(string $groupName): void
     {
-        foreach ($this->children as $child) {
-            if ($child->getGroupConfig()->getName() !== $groupName) {
-                continue;
+        if (!$this->isMaster()) {
+            return;
+        }
+
+        // Resume the group
+        foreach ($this->groupConfigs as $groupConfig) {
+            if ($groupConfig->getName() === $groupName) {
+                $groupConfig->setSuspended(false);
+
+                break;
             }
-            if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
-                continue;
+        }
+
+        if ($this->isRunning()) {
+            // We're running, we need to start the processes
+            // If we're not running, the processes will be
+            // started in runMaster
+            foreach ($this->children as $child) {
+                if ($child->getGroupConfig()->getName() !== $groupName) {
+                    continue;
+                }
+                $child->start();
             }
-            $child->start();
         }
     }
 
     /**
      * {@inheritdoc}
      */
-    public function runAll(): void
+    public function resumeAll(): void
     {
-        foreach ($this->children as $child) {
-            if (ProcessInterface::STATUS_RUNNING === $child->getStatus()) {
-                continue;
+        if (!$this->isMaster()) {
+            return;
+        }
+
+        // Resume all groups
+        foreach ($this->groupConfigs as $groupConfig) {
+            $groupConfig->setSuspended(false);
+        }
+
+        if ($this->isRunning()) {
+            // We're running, we need to start the processes
+            // If we're not running, the processes will be
+            // started in runMaster
+            foreach ($this->children as $child) {
+                $child->start();
             }
-            $child->start();
         }
     }
 
     /**
      * {@inheritdoc}
      */
-    public function stopAll(bool $force = false): void
+    public function suspendAll(bool $force = false): void
     {
+        if (!$this->isMaster()) {
+            return;
+        }
+
+        // Suspend all groups
+        foreach ($this->groupConfigs as $groupConfig) {
+            $groupConfig->setSuspended(true);
+        }
+
         foreach ($this->children as $child) {
-            if (ProcessInterface::STATUS_RUNNING !== $child->getStatus()) {
-                continue;
-            }
             if ($force) {
                 $child->stop(SIGKILL);
             } else {
@@ -213,13 +344,23 @@ class Launcher extends AbstractStoppable implements LauncherInterface
     /**
      * {@inheritdoc}
      */
-    public function stopGroup(string $groupName, bool $force = false): void
+    public function suspendGroup(string $groupName, bool $force = false): void
     {
+        if (!$this->isMaster()) {
+            return;
+        }
+
+        // Suspend the group
+        foreach ($this->groupConfigs as $groupConfig) {
+            if ($groupConfig->getName() === $groupName) {
+                $groupConfig->setSuspended(true);
+
+                break;
+            }
+        }
+
         foreach ($this->children as $child) {
             if ($child->getGroupConfig()->getName() !== $groupName) {
-                continue;
-            }
-            if (ProcessInterface::STATUS_RUNNING !== $child->getStatus()) {
                 continue;
             }
             if ($force) {
@@ -228,33 +369,6 @@ class Launcher extends AbstractStoppable implements LauncherInterface
                 $child->softStop();
             }
         }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount, EventsInterface $events = null): void
-    {
-        if ($events) {
-            $events->starting($this, $this->logger);
-        }
-
-        // Start
-        $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount, $events);
-
-        if ($events) {
-            $events->started($this, $this->logger);
-        }
-
-        $this->startedTime = time();
-
-        $this->handleChildren($events);
-
-        if ($events) {
-            $events->stopped($this, $this->logger);
-        }
-
-        $this->reset();
     }
 
     /**
@@ -337,15 +451,14 @@ class Launcher extends AbstractStoppable implements LauncherInterface
      * @param int                  $idStart      The current value of the global id
      * @param int                  $groupIdStart The current value of the group id
      * @param int                  $groupCount   The total number of processes in the group
-     * @param null|EventsInterface $events       An events interface to be called upon events
      *
      * @return int the number of started processes
      */
-    protected function startGroup(GroupConfigInterface $groupConfig, int $idStart, int $groupIdStart, int $groupCount, ?EventsInterface $events): int
+    protected function startGroup(GroupConfigInterface $groupConfig, int $idStart, int $groupIdStart, int $groupCount): int
     {
         $processesCount = 0;
         foreach ($groupConfig->getProcessConfigs() as $processConfig) {
-            $count = $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount, $events);
+            $count = $this->startGroupProcess($groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount);
 
             $idStart += $count;
             $groupIdStart += $count;
@@ -363,14 +476,13 @@ class Launcher extends AbstractStoppable implements LauncherInterface
      * @param int                    $idStart       The current value of the global id
      * @param int                    $groupIdStart  The current value of the group id
      * @param int                    $groupCount    The total number of processes in the group
-     * @param null|EventsInterface   $events        An events interface to be called upon events
      *
      * @return int the number of started processes
      */
-    protected function startGroupProcess(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount, ?EventsInterface $events): int
+    protected function startGroupProcess(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount): int
     {
         $processClass = $this->getConfigProcess($processConfig);
-        $children = call_user_func([$processClass, 'instanciate'], $this, $events, $this->logger, $groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount);
+        $children = call_user_func([$processClass, 'instanciate'], $this, $groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount);
         foreach ($children as $child) {
             $child->start();
             $this->children[$child->getId()] = $child;
@@ -399,7 +511,7 @@ class Launcher extends AbstractStoppable implements LauncherInterface
     /**
      * Handle all the children processes.
      */
-    protected function handleChildren(?EventsInterface $events): void
+    protected function handleChildren(): void
     {
         $lastContent = time();
         $stopping = false;
@@ -427,27 +539,8 @@ class Launcher extends AbstractStoppable implements LauncherInterface
                 }
             }
 
-            if ($events) {
-                $events->check($this, $this->logger);
-            }
-
-            // Check each process
-            foreach ($this->children as $child) {
-                // We only care about stopping processes
-                if (ProcessInterface::STATUS_STOPPING !== $child->getStatus()) {
-                    continue;
-                }
-                $processTimeout = $child->getTimeout();
-                $masterTimeout = $this->getTimeout();
-                $timeout = $masterTimeout <= $processTimeout ? $masterTimeout : $processTimeout;
-                if (!$timeout) {
-                    continue;
-                }
-                if ((time() - $child->getStoppingAt()) > $timeout) {
-                    // Process has been asked too long along to stop,
-                    // force kill it
-                    $child->stop(SIGKILL);
-                }
+            if ($this->events) {
+                $this->events->check($this);
             }
 
             if (!$stopStartTime) {
@@ -528,7 +621,7 @@ class Launcher extends AbstractStoppable implements LauncherInterface
 
                     break;
                 case ProcessInterface::READ_FAILED:
-                    // Fail during read, we need to remove it
+                    // Fail during read, we need to stop it
                     $child->stop();
 
                 break;
@@ -536,15 +629,6 @@ class Launcher extends AbstractStoppable implements LauncherInterface
         }
 
         return $gotContent;
-    }
-
-    /**
-     * Reset this launcher.
-     */
-    protected function reset(): void
-    {
-        $this->mustStop = false;
-        $this->children = [];
     }
 
     protected function logMessage(string $level, string $message, array $context = []): void

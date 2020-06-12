@@ -3,12 +3,12 @@
 namespace giudicelli\DistributedArchitecture\Slave;
 
 use giudicelli\DistributedArchitecture\AbstractStoppable;
+use giudicelli\DistributedArchitecture\Config\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Config\ProcessConfigInterface;
 use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
 use giudicelli\DistributedArchitecture\Master\EventsInterface;
-use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\Master\LauncherInterface;
-use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
 
 /**
  * This class is the implementation of the HandlerInterface interface . Its main role is to handle commands send by the LauncherInterface, such as launching a list of processes or to kill them.
@@ -322,7 +322,13 @@ class Handler extends AbstractStoppable implements HandlerInterface
 
         $masterProcess = $this->getCommandLauncherObject();
         $events = $this->getCommandEventsObject();
-        $masterProcess->runSingle($this->groupConfig, $config, $this->id, $this->groupId, $this->groupCount, $events);
+
+        $this->groupConfig->setProcessConfigs([$config]);
+        $masterProcess
+            ->setGroupConfigs([$this->groupConfig])
+            ->setEventsHandler($events)
+            ->runRemote($this->id, $this->groupId, $this->groupCount)
+        ;
 
         @unlink($pidFile);
     }

@@ -1,8 +1,6 @@
 <?php
 
-namespace giudicelli\DistributedArchitecture\Master\Handlers;
-
-use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
+namespace giudicelli\DistributedArchitecture\Config;
 
 /**
  * The group config.

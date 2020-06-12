@@ -2,7 +2,7 @@
 
 namespace giudicelli\DistributedArchitecture\Slave;
 
-use giudicelli\DistributedArchitecture\Master\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Config\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\StoppableInterface;
 
 /**

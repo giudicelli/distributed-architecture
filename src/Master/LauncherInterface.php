@@ -2,7 +2,9 @@
 
 namespace giudicelli\DistributedArchitecture\Master;
 
+use giudicelli\DistributedArchitecture\Config\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\StoppableInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * The interface defines the model for a launcher. Its main role is to launch processes.
@@ -32,25 +34,44 @@ interface LauncherInterface extends StoppableInterface
     public function setMaxProcessTimeout(?int $maxProcessTimeout): self;
 
     /**
-     * Run processes.
+     * Set the events handler.
      *
-     * @param array<GroupConfigInterface> $groupConfigs The configuration for each group of processes
-     * @param EventsInterface             $events       An events interface to be called upon events
-     * @param bool                        $neverExit    When set to true run will never exit upon the end of all processes, unless stop() is called. To start processes again you will need to call startGroup or startAll.
+     * @param EventsInterface $events An events interface to be called upon events
      */
-    public function run(array $groupConfigs, EventsInterface $events = null, bool $neverExit = false): void;
+    public function setEventsHandler(?EventsInterface $events): self;
 
     /**
-     * Run a single process.
-     *
-     * @param GroupConfigInterface   $groupConfig   The configuration for the group
-     * @param ProcessConfigInterface $processConfig The configuration for the process
-     * @param int                    $idStart       The current global id
-     * @param int                    $groupIdStart  The current group id
-     * @param int                    $groupCount    The total number of processes in this group
-     * @param EventsInterface        $events        An events interface to be called upon events
+     * Get the events handler.
      */
-    public function runSingle(GroupConfigInterface $groupConfig, ProcessConfigInterface $processConfig, int $idStart, int $groupIdStart, int $groupCount, EventsInterface $events = null): void;
+    public function getEventsHandler(): ?EventsInterface;
+
+    /**
+     * Return the logger interface.
+     */
+    public function getLogger(): LoggerInterface;
+
+    /**
+     * Set the group configs.
+     *
+     * @param array<GroupConfigInterface> $groupConfigs The configuration for each group of processes
+     */
+    public function setGroupConfigs(array $groupConfigs): self;
+
+    /**
+     * Run processes, this the main function when running on a master.
+     *
+     * @param bool $neverExit When set to true run will never exit upon the end of all processes, unless stop() is called. To start processes again you will need to call startGroup or startAll.
+     */
+    public function runMaster(bool $neverExit = false): void;
+
+    /**
+     * Run processes, this the main function when running on a remote.
+     *
+     * @param int $idStart      The current global id
+     * @param int $groupIdStart The current group id
+     * @param int $groupCount   The total number of processes in this group
+     */
+    public function runRemote(int $idStart, int $groupIdStart, int $groupCount): void;
 
     /**
      * Are there any process currently running?
@@ -63,29 +84,29 @@ interface LauncherInterface extends StoppableInterface
     public function isMaster(): bool;
 
     /**
-     * Start all processes in certain group. If some of the processes are already running they will be ignored. It needs to be used in conjonction with $neverExit = true on run();.
+     * Resume all processes in certain group. If some of the processes are already running they will be ignored.
      *
      * @param string $groupName The name of the group
      */
-    public function runGroup(string $groupName): void;
+    public function resumeGroup(string $groupName): void;
 
     /**
-     * Stop all processes in certain group. It needs to be used in conjonction with $neverExit = true on run();.
+     * Suspend all processes in certain group, but don't destroy them.
      *
      * @param string $groupName The name of the group
      * @param bool   $force     Set to true to force kill the processes
      */
-    public function stopGroup(string $groupName, bool $force = false): void;
+    public function suspendGroup(string $groupName, bool $force = false): void;
 
     /**
-     * Start all processes. If some of the processes are already running they will be ignored. It needs to be used in conjonction with $neverExit = true on run();.
+     * Resume all processes. If some of the processes are already running they will be ignored.
      */
-    public function runAll(): void;
+    public function resumeAll(): void;
 
     /**
-     * Stop all processes. If some of the processes are already running they will be ignored. It needs to be used in conjonction with $neverExit = true on run();.
+     * Suspend all processes, but don't destroy them.
      *
      * @param bool $force Set to true to force kill the processes
      */
-    public function stopAll(bool $force = false): void;
+    public function suspendAll(bool $force = false): void;
 }

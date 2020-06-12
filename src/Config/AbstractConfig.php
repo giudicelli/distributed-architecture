@@ -1,8 +1,6 @@
 <?php
 
-namespace giudicelli\DistributedArchitecture\Master\Handlers;
-
-use giudicelli\DistributedArchitecture\Master\ConfigInterface;
+namespace giudicelli\DistributedArchitecture\Config;
 
 /**
  * The general config, shared between a group config and process config. When used for a process config, it allows to overide the default values of the group.

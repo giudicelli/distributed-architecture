@@ -2,7 +2,8 @@
 
 namespace giudicelli\DistributedArchitecture\Master;
 
-use Psr\Log\LoggerInterface;
+use giudicelli\DistributedArchitecture\Config\GroupConfigInterface;
+use giudicelli\DistributedArchitecture\Config\ProcessConfigInterface;
 
 /**
  * The general interface for a started process.
@@ -32,8 +33,6 @@ interface ProcessInterface
      * Instanciate the processes.
      *
      * @param LauncherInterface      $launcher     The parent launcher
-     * @param EventsInterface        $events       An events interface to be called upon events, can be null
-     * @param LoggerInterface        $logger       The logger
      * @param GroupConfigInterface   $groupConfig  The group config
      * @param ProcessConfigInterface $config       The process config
      * @param int                    $idStart      The current global id
@@ -42,7 +41,7 @@ interface ProcessInterface
      *
      * @return array<ProcessInterface> The instanciated processes
      */
-    public static function instanciate(LauncherInterface $launcher, ?EventsInterface $events, LoggerInterface $logger, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array;
+    public static function instanciate(LauncherInterface $launcher, GroupConfigInterface $groupConfig, ProcessConfigInterface $config, int $idStart, int $groupIdStart, int $groupCount): array;
 
     /**
      * Return the number of processes that will be started using a certain config.
@@ -51,7 +50,7 @@ interface ProcessInterface
      *
      * @return int The number
      */
-    public static function willStartCount(ConfigInterface $config): int;
+    public static function willStartCount(ProcessConfigInterface $config): int;
 
     /**
      * Start the process.
@@ -157,13 +156,6 @@ interface ProcessInterface
      * @return string The host
      */
     public function getHost(): string;
-
-    /**
-     * Return at what time the process soft stop was initiated.
-     *
-     * @return int At what time the soft stop started
-     */
-    public function getStoppingAt(): int;
 
     /**
      * Return the configured timeout for this process.

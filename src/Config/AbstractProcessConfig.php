@@ -1,8 +1,6 @@
 <?php
 
-namespace giudicelli\DistributedArchitecture\Master\Handlers;
-
-use giudicelli\DistributedArchitecture\Master\ProcessConfigInterface;
+namespace giudicelli\DistributedArchitecture\Config;
 
 /**
  * The general config to start a process.
