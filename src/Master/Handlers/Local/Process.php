@@ -186,6 +186,12 @@ class Process extends AbstractProcess
             $this->pipes = [];
         }
         if (!empty($this->proc)) {
+            $status = proc_get_status($this->proc);
+            if (!empty($status['running'])) {
+                // The process should already be dead, force kill it
+                $this->sendSignal(SIGKILL);
+            }
+
             proc_close($this->proc);
             $this->proc = null;
         }
