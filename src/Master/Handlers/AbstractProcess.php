@@ -55,6 +55,10 @@ abstract class AbstractProcess implements ProcessInterface
         $this->groupConfig = $groupConfig;
         $this->config = $config;
         $this->launcher = $launcher;
+
+        if ($this->isEventCompatible() && $this->getParent()->getEventsHandler()) {
+            $this->getParent()->getEventsHandler()->processCreated($this);
+        }
     }
 
     /**

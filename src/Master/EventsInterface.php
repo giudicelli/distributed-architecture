@@ -38,6 +38,13 @@ interface EventsInterface
     public function stopped(LauncherInterface $launcher): void;
 
     /**
+     * Called when a process is created.
+     *
+     * @param ProcessInterface $process The process
+     */
+    public function processCreated(ProcessInterface $process): void;
+
+    /**
      * Called when a process is started.
      *
      * @param ProcessInterface $process The process

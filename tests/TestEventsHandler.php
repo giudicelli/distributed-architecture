@@ -83,6 +83,13 @@ class TestEventsHandler implements EventsInterface
     /**
      * {@inheritdoc}
      */
+    public function processCreated(ProcessInterface $process): void
+    {
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function processStarted(ProcessInterface $process): void
     {
     }

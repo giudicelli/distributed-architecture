@@ -148,6 +148,16 @@ class Launcher extends AbstractStoppable implements LauncherInterface
     /**
      * {@inheritdoc}
      */
+    public function ping(): void
+    {
+        if (!$this->isMaster()) {
+            parent::ping();
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function runMaster(bool $neverExit = false): void
     {
         $this->mustStop = false;
@@ -176,21 +186,18 @@ class Launcher extends AbstractStoppable implements LauncherInterface
                 $this->events->starting($this);
             }
 
-            // Start all groups that are not suspended
+            // Start all groups
             $idStart = 1;
             foreach ($this->groupConfigs as $groupConfig) {
                 if ($this->mustStop()) {
                     break;
                 }
-                if (!$groupConfig->isSuspended()) {
-                    $idStart += $this->startGroup($groupConfig, $idStart, 1, $this->countGroup($groupConfig));
-                }
+                $idStart += $this->startGroup($groupConfig, $idStart, 1, $this->countGroup($groupConfig));
             }
             if ($this->events) {
                 $this->events->started($this);
             }
 
-            $this->startedTime = time();
             $this->handleChildren();
 
             $this->children = [];
@@ -229,8 +236,6 @@ class Launcher extends AbstractStoppable implements LauncherInterface
         if ($this->events) {
             $this->events->started($this);
         }
-
-        $this->startedTime = time();
 
         $this->handleChildren();
 
@@ -484,7 +489,10 @@ class Launcher extends AbstractStoppable implements LauncherInterface
         $processClass = $this->getConfigProcess($processConfig);
         $children = call_user_func([$processClass, 'instanciate'], $this, $groupConfig, $processConfig, $idStart, $groupIdStart, $groupCount);
         foreach ($children as $child) {
-            $child->start();
+            if (!($groupConfig instanceof SuspendableGroupConfig) ||
+                !$groupConfig->isSuspended()) {
+                $child->start();
+            }
             $this->children[$child->getId()] = $child;
         }
 
@@ -518,6 +526,8 @@ class Launcher extends AbstractStoppable implements LauncherInterface
         $stopStartTime = 0;
         $mustStop = false;
 
+        $this->startedTime = time();
+
         while ($this->isRunning()) {
             if ($this->readChildren(0 !== $stopStartTime)) {
                 $lastContent = time();
@@ -531,12 +541,7 @@ class Launcher extends AbstractStoppable implements LauncherInterface
             } else {
                 // 100ms
                 usleep(100000);
-
-                if (!$this->isMaster) {
-                    // We're a remote launcher,
-                    // let the master know we're alive
-                    $this->ping();
-                }
+                $this->ping();
             }
 
             if ($this->events) {

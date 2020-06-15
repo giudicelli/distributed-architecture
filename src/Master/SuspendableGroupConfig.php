@@ -12,8 +12,7 @@ class SuspendableGroupConfig extends GroupConfig
     public function __construct(?GroupConfigInterface $groupConfig = null)
     {
         if ($groupConfig) {
-            $data = $groupConfig->toArray();
-            $this->fromArray($data);
+            $this->fromArray($groupConfig->toArray());
             $this->setProcessConfigs($groupConfig->getProcessConfigs());
         }
     }
