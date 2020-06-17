@@ -18,16 +18,21 @@ class InterProcessLogger extends AbstractLogger
      * @param bool                 $local  Is the logger instanciated on the main master?
      * @param null|LoggerInterface $logger When local is true, the actual final logger
      */
-    public function __construct(bool $local, ?LoggerInterface $logger = null)
+    public function __construct(bool $local = false, ?LoggerInterface $logger = null)
     {
         $this->local = $local;
         $this->logger = $logger;
     }
 
+    public static function sendLog($level, $message, array $context = [])
+    {
+        echo self::serializeLog($level, $message, $context)."\n";
+    }
+
     public function log($level, $message, array $context = [])
     {
         if (!$this->local) {
-            echo self::serializeLog($level, $message, $context)."\n";
+            self::sendLog($level, $message, $context);
 
             return;
         }

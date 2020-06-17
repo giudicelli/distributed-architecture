@@ -515,8 +515,6 @@ final class LauncherTest extends TestCase
         $output = $this->logger->getOutput();
         sort($output);
 
-        print_r($output);
-
         $expected = [
             'info - [test1] [localhost] [tests/SlaveFile.php/1/1] Child 1 1',
             'info - [test1] [localhost] [tests/SlaveFile.php/1/1] Child 1 1',

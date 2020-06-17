@@ -9,6 +9,7 @@ use giudicelli\DistributedArchitecture\Helper\InterProcessLogger;
 use giudicelli\DistributedArchitecture\Helper\ProcessHelper;
 use giudicelli\DistributedArchitecture\Master\EventsInterface;
 use giudicelli\DistributedArchitecture\Master\LauncherInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * This class is the implementation of the HandlerInterface interface . Its main role is to handle commands send by the LauncherInterface, such as launching a list of processes or to kill them.
@@ -43,6 +44,8 @@ class Handler extends AbstractStoppable implements HandlerInterface
 
     protected $groupCount = 0;
 
+    protected $logger;
+
     /** @var array */
     protected $params;
 
@@ -54,6 +57,7 @@ class Handler extends AbstractStoppable implements HandlerInterface
      */
     public function __construct(string $params)
     {
+        $this->logger = new InterProcessLogger();
         $this->parseParams($params);
     }
 
@@ -90,6 +94,14 @@ class Handler extends AbstractStoppable implements HandlerInterface
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function getLogger(): LoggerInterface
+    {
+        return $this->logger;
+    }
+
+    /**
      * Let the master process know we're done. It needs to be call just before the process exits.
      */
     public function sendEnded(): void
@@ -111,7 +123,7 @@ class Handler extends AbstractStoppable implements HandlerInterface
 
             pcntl_signal(SIGTERM, [&$this, 'signalHandler']);
 
-            call_user_func($processCallback, $this, new InterProcessLogger(false));
+            call_user_func($processCallback, $this);
             $this->sendEnded();
         }
     }

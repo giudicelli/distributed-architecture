@@ -4,6 +4,7 @@ namespace giudicelli\DistributedArchitecture\Slave;
 
 use giudicelli\DistributedArchitecture\Config\GroupConfigInterface;
 use giudicelli\DistributedArchitecture\StoppableInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * The interface defines the model for an handler. Its main role is to handle commands send by the LauncherInterface, such as launching a list of processes or to kill them.
@@ -31,6 +32,11 @@ interface HandlerInterface extends StoppableInterface
      * @return array The group config
      */
     public function getGroupConfig(): GroupConfigInterface;
+
+    /**
+     * @return LoggerInterface The logger to use
+     */
+    public function getLogger(): LoggerInterface;
 
     /**
      * Run this handler.
