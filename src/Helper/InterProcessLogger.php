@@ -78,15 +78,12 @@ class InterProcessLogger extends AbstractLogger
                 unset($context[$key]);
             }
         }
-        $message = join(' ', $prefix).' '.$message;
+        $message = trim(join(' ', $prefix).' '.$message);
 
         if ($this->logger) {
             $this->logger->log($level, $message, $context);
         } else {
-            foreach ($context as $key => $value) {
-                $message = str_replace('{'.$key.'}', $value, $message);
-            }
-            echo "{$message}\n";
+            echo $this->interpolate($message, $context).PHP_EOL;
         }
     }
 
@@ -97,7 +94,7 @@ class InterProcessLogger extends AbstractLogger
      */
     protected static function serializeLog(string $level, string $message, array $context = []): string
     {
-        return self::TOKEN.json_encode(['level' => $level, 'message' => $message, 'context' => $context]);
+        return self::TOKEN.serialize(['level' => $level, 'message' => $message, 'context' => $context]);
     }
 
     /**
@@ -117,11 +114,38 @@ class InterProcessLogger extends AbstractLogger
             return null;
         }
         $line = substr($line, self::TOKEN_LENGTH);
-        $log = @json_decode($line, true);
+        $log = @unserialize($line);
         if (empty($log['level']) || !isset($log['message']) || !isset($log['context'])) {
             return null;
         }
 
         return $log;
+    }
+
+    /**
+     * Interpolates context values into the message placeholders.
+     *
+     * @author PHP Framework Interoperability Group
+     */
+    protected function interpolate(string $message, array $context): string
+    {
+        if (false === strpos($message, '{')) {
+            return $message;
+        }
+
+        $replacements = [];
+        foreach ($context as $key => $val) {
+            if (null === $val || is_scalar($val) || (\is_object($val) && method_exists($val, '__toString'))) {
+                $replacements["{{$key}}"] = $val;
+            } elseif ($val instanceof \DateTimeInterface) {
+                $replacements["{{$key}}"] = $val->format(\DateTime::RFC3339);
+            } elseif (\is_object($val)) {
+                $replacements["{{$key}}"] = '[object '.\get_class($val).']';
+            } else {
+                $replacements["{{$key}}"] = '['.\gettype($val).']';
+            }
+        }
+
+        return strtr($message, $replacements);
     }
 }
