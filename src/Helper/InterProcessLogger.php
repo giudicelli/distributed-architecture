@@ -40,7 +40,9 @@ class InterProcessLogger extends AbstractLogger
      */
     public static function sendLog($level, $message, array $context = [])
     {
+        $buffers = self::suspendBuffering();
         echo self::serializeLog($level, $message, $context)."\n";
+        self::resumeBuffering($buffers);
     }
 
     /**
@@ -80,13 +82,11 @@ class InterProcessLogger extends AbstractLogger
         }
         $message = trim(join(' ', $prefix).' '.$message);
 
-        $buffers = $this->suspendBuffering();
         if ($this->logger) {
             $this->logger->log($level, $message, $context);
         } else {
             echo $this->interpolate($message, $context).PHP_EOL;
         }
-        $this->resumeBuffering($buffers);
     }
 
     /**
@@ -156,7 +156,7 @@ class InterProcessLogger extends AbstractLogger
      *
      * @return string[] The buffers
      */
-    protected function suspendBuffering(): array
+    protected static function suspendBuffering(): array
     {
         $buffers = [];
         while (ob_get_level()) {
@@ -171,7 +171,7 @@ class InterProcessLogger extends AbstractLogger
      *
      * @param string[] $buffers The buffers as returned by suspendBuffering
      */
-    protected function resumeBuffering(array $buffers): void
+    protected static function resumeBuffering(array $buffers): void
     {
         $buffers = array_reverse($buffers);
         foreach ($buffers as $buffer) {
