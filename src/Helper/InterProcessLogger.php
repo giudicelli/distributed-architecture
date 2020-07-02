@@ -80,11 +80,13 @@ class InterProcessLogger extends AbstractLogger
         }
         $message = trim(join(' ', $prefix).' '.$message);
 
+        $buffers = $this->suspendBuffering();
         if ($this->logger) {
             $this->logger->log($level, $message, $context);
         } else {
             echo $this->interpolate($message, $context).PHP_EOL;
         }
+        $this->resumeBuffering($buffers);
     }
 
     /**
@@ -147,5 +149,34 @@ class InterProcessLogger extends AbstractLogger
         }
 
         return strtr($message, $replacements);
+    }
+
+    /**
+     * Suspends all buffering and returns the active buffers.
+     *
+     * @return string[] The buffers
+     */
+    protected function suspendBuffering(): array
+    {
+        $buffers = [];
+        while (ob_get_level()) {
+            $buffers[] = ob_get_clean();
+        }
+
+        return $buffers;
+    }
+
+    /**
+     * Resume buffering and set its previous buffers.
+     *
+     * @param string[] $buffers The buffers as returned by suspendBuffering
+     */
+    protected function resumeBuffering(array $buffers): void
+    {
+        $buffers = array_reverse($buffers);
+        foreach ($buffers as $buffer) {
+            ob_start(function () { return ''; });
+            echo $buffer;
+        }
     }
 }
