@@ -3,6 +3,8 @@
 namespace giudicelli\DistributedArchitecture\Helper;
 
 /**
+ * Processes helper.
+ *
  * @author Frédéric Giudicelli
  *
  * @internal

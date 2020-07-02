@@ -32,7 +32,7 @@ interface GroupConfigInterface extends ConfigInterface
     /**
      * Set the list of process configs.
      *
-     * @param null|array<ProcessConfigInterface> $processes
+     * @param null|array<ProcessConfigInterface> $processConfigs
      */
     public function setProcessConfigs(?array $processConfigs): GroupConfigInterface;
 

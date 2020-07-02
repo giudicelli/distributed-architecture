@@ -5,6 +5,13 @@ namespace giudicelli\DistributedArchitecture\Helper;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
 
+/**
+ * The class allows processes to send each other logs.
+ *
+ * @author Frédéric Giudicelli
+ *
+ * @internal
+ */
 class InterProcessLogger extends AbstractLogger
 {
     protected const TOKEN = 'InterProcessLogger:';
@@ -24,11 +31,21 @@ class InterProcessLogger extends AbstractLogger
         $this->logger = $logger;
     }
 
+    /**
+     * Allows a slave process to directy send a serialized log to the master process.
+     *
+     * @param mixed   $level
+     * @param string  $message
+     * @param mixed[] $context
+     */
     public static function sendLog($level, $message, array $context = [])
     {
         echo self::serializeLog($level, $message, $context)."\n";
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function log($level, $message, array $context = [])
     {
         if (!$this->local) {
@@ -73,16 +90,27 @@ class InterProcessLogger extends AbstractLogger
         }
     }
 
+    /**
+     * Serialize a log.
+     *
+     * @return string the serialized log
+     */
     protected static function serializeLog(string $level, string $message, array $context = []): string
     {
         return self::TOKEN.json_encode(['level' => $level, 'message' => $message, 'context' => $context]);
     }
 
+    /**
+     * Check if a string is a serialized log.
+     */
     protected static function isSerializedMessage(string $line): bool
     {
         return self::TOKEN === substr($line, 0, self::TOKEN_LENGTH);
     }
 
+    /**
+     * Unserialize a log.
+     */
     protected static function unserializeLog(string $line): ?array
     {
         if (!self::isSerializedMessage($line)) {
