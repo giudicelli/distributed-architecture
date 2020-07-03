@@ -96,7 +96,7 @@ class InterProcessLogger extends AbstractLogger
      */
     protected static function serializeLog(string $level, string $message, array $context = []): string
     {
-        return self::TOKEN.serialize(['level' => $level, 'message' => $message, 'context' => $context]);
+        return self::TOKEN.json_encode(serialize(['level' => $level, 'message' => $message, 'context' => $context]));
     }
 
     /**
@@ -116,7 +116,7 @@ class InterProcessLogger extends AbstractLogger
             return null;
         }
         $line = substr($line, self::TOKEN_LENGTH);
-        $log = @unserialize($line);
+        $log = @unserialize(json_decode($line));
         if (empty($log['level']) || !isset($log['message']) || !isset($log['context'])) {
             return null;
         }
