@@ -41,7 +41,10 @@ class InterProcessLogger extends AbstractLogger
     public static function sendLog($level, $message, array $context = [])
     {
         $buffers = self::suspendBuffering();
-        echo self::serializeLog($level, $message, $context)."\n";
+        $log = self::serializeLog($level, $message, $context);
+        if ($log) {
+            echo "{$log}\n";
+        }
         self::resumeBuffering($buffers);
     }
 
@@ -85,7 +88,7 @@ class InterProcessLogger extends AbstractLogger
         if ($this->logger) {
             $this->logger->log($level, $message, $context);
         } else {
-            echo $this->interpolate($message, $context).PHP_EOL;
+            echo self::interpolate($message, $context).PHP_EOL;
         }
     }
 
@@ -96,7 +99,20 @@ class InterProcessLogger extends AbstractLogger
      */
     protected static function serializeLog(string $level, string $message, array $context = []): string
     {
-        return self::TOKEN.json_encode(serialize(['level' => $level, 'message' => $message, 'context' => $context]));
+        try {
+            return self::TOKEN.json_encode(serialize(['level' => $level, 'message' => $message, 'context' => $context]));
+        } catch (\Exception $e) {
+        }
+
+        if ($context) {
+            // Probably something in $context is not serializable, interpolate message and context
+            // and send the result string
+            $message = self::interpolate($message, $context);
+
+            return self::serializeLog($level, $message);
+        }
+
+        return '';
     }
 
     /**
@@ -129,7 +145,7 @@ class InterProcessLogger extends AbstractLogger
      *
      * @author PHP Framework Interoperability Group
      */
-    protected function interpolate(string $message, array $context): string
+    protected static function interpolate(string $message, array $context): string
     {
         if (false === strpos($message, '{')) {
             return $message;
